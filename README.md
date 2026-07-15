@@ -59,7 +59,7 @@ pwnscout is that first pass:
 Nothing to install — clone and run:
 
 ```bash
-git clone https://github.com/OWNER/pwnscout.git
+git clone https://github.com/ericchen913900/pwnscout.git
 cd pwnscout
 python3 pwnscout.py --version
 ```
