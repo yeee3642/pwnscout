@@ -55,6 +55,35 @@ def fingerprints() -> List[Dict[str, Any]]:
     return _load("fingerprints.json")
 
 
+@lru_cache(maxsize=1)
+def payloads() -> Dict[str, Any]:
+    """Web probe payloads/signatures (a dict, not a list)."""
+    data = _read(os.path.join(_KB_DIR, "payloads.json")) or {}
+    extra_dir = os.environ.get("PWNSCOUT_KB")
+    if extra_dir and os.path.isdir(extra_dir):
+        override = _read(os.path.join(extra_dir, "payloads.json"))
+        if isinstance(override, dict):
+            data = {**data, **override}
+    return data if isinstance(data, dict) else {}
+
+
+def wordlist(path: Optional[str] = None) -> List[str]:
+    """Content-discovery wordlist (built-in, or a user file via --wordlist)."""
+    src = path or os.path.join(_KB_DIR, "web_wordlist.txt")
+    out: List[str] = []
+    try:
+        with open(src, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    out.append(line.lstrip("/"))
+    except OSError:
+        return []
+    # de-dup, preserve order
+    seen = set()
+    return [w for w in out if not (w in seen or seen.add(w))]
+
+
 # ---------------------------------------------------------------------------
 # version handling
 # ---------------------------------------------------------------------------

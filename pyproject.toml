@@ -38,8 +38,9 @@ packages = [
     "pwnscout.kb",
     "pwnscout.verify",
     "pwnscout.exploit",
+    "pwnscout.web",
     "pwnscout.report",
 ]
 
 [tool.setuptools.package-data]
-"pwnscout.kb" = ["*.json"]
+"pwnscout.kb" = ["*.json", "*.txt"]

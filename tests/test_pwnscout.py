@@ -75,6 +75,70 @@ def test_exploit_find_flag():
     assert Exploit.find_flag("no flag here", ctx) is None
 
 
+def test_payloads_and_wordlist_load():
+    pl = loader.payloads()
+    assert pl["ssti"] and pl["sqli_errors"] and pl["xss"]
+    assert len(loader.wordlist()) > 100
+
+
+class _FakeSession:
+    """In-process vulnerable app: reflects input (XSS), evals {{7*7}} (SSTI),
+    and errors on a quote (SQLi). Lets us test probes with no network."""
+    headers: dict = {}
+
+    def _render(self, value: str) -> str:
+        body = f"page echo: {value}".replace("{{7*7}}", "49")
+        if "'" in value or '"' in value:
+            body += " -- SQL syntax error near your MySQL server"
+        return body
+
+    def _val(self, url_or_data):
+        from urllib.parse import parse_qs, urlparse
+        qs = parse_qs(urlparse(url_or_data).query or url_or_data)
+        return next(iter(qs.values()), [""])[0]
+
+    def get(self, url, extra_headers=None):
+        return HttpResponse(url, 200, {}, self._render(self._val(url)), url)
+
+    def request(self, url, method="GET", data=None, extra_headers=None):
+        if data:
+            return HttpResponse(url, 200, {}, self._render(self._val(data.decode())), url)
+        return self.get(url, extra_headers)
+
+
+def test_crawler_extracts_points():
+    from pwnscout.web.crawler import crawl
+
+    html = ("<a href='/search?q=x'>s</a>"
+            "<form action='/login' method='post'>"
+            "<input name='user'><input name='pass'></form>")
+
+    class S:
+        headers = {}
+        def get(self, url, extra_headers=None):
+            body = html if url.rstrip("/").endswith("8903") else ""
+            return HttpResponse(url, 200, {"content-type": "text/html"}, body, url)
+        def request(self, *a, **k):
+            return self.get(a[0])
+
+    res = crawl(S(), "http://127.0.0.1:8903/", depth=1, max_pages=10)
+    names = {p.source for p in res.points}
+    params = {k for p in res.points for k in p.params}
+    assert "form" in names and "q" in params and "user" in params
+
+
+def test_probes_detect_xss_ssti_sqli():
+    from types import SimpleNamespace
+    from pwnscout.web.crawler import InjectionPoint
+    from pwnscout.web.probes import probe_points
+
+    point = InjectionPoint("GET", "http://t/search", {"q": "x"}, "url")
+    opts = SimpleNamespace(probe_budget=1500, max_points=40)
+    findings = probe_points(_FakeSession(), [point], opts)
+    tags = {t for f in findings for t in f.tags}
+    assert "ssti" in tags and "xss" in tags and "sqli" in tags
+
+
 def test_report_renders():
     h = Host(ip="10.0.0.5", services=[Service(port=80, name="http")])
     h.add(Finding("10.0.0.5", "http", "Exposed .env", port=80,

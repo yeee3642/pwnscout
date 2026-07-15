@@ -58,6 +58,42 @@ def _add_exploit(sub) -> None:
     p.add_argument("--no-color", action="store_true", dest="no_color")
 
 
+def _add_web(sub) -> None:
+    p = sub.add_parser("web",
+                       help="deep web assessment: crawl + discover + safe active probes")
+    p.add_argument("targets", nargs="+", help="app URL(s) or host (http:// assumed)")
+    p.add_argument("--no-crawl", action="store_false", dest="crawl",
+                   help="skip crawling (probe only the URLs given)")
+    p.add_argument("--depth", type=int, default=2, help="crawl depth (default 2)")
+    p.add_argument("--max-pages", type=int, default=200, dest="max_pages")
+    p.add_argument("--discover", action="store_true",
+                   help="run wordlist content discovery")
+    p.add_argument("--wordlist", help="content-discovery wordlist (default: bundled)")
+    p.add_argument("--ext", default="",
+                   help="extensions to append in discovery, e.g. php,bak,txt,zip")
+    p.add_argument("--no-probe", action="store_false", dest="probe",
+                   help="skip active vuln probes (crawl/discover only)")
+    p.add_argument("--probe-budget", type=int, default=1500, dest="probe_budget",
+                   help="max probe requests (guards against huge apps)")
+    p.add_argument("--max-points", type=int, default=40, dest="max_points",
+                   help="max injection points to probe")
+    p.add_argument("--cookie", help="Cookie header for authenticated scans")
+    p.add_argument("--header", action="append", metavar="'K: V'",
+                   help="extra request header (repeatable)")
+    p.add_argument("--auth-basic", dest="auth_basic", help="user:pass for HTTP Basic")
+    p.add_argument("--timeout", type=float, default=8.0)
+    p.add_argument("--http-timeout", type=float, default=8.0, dest="http_timeout")
+    p.add_argument("--delay", type=float, default=0.0,
+                   help="seconds between requests (be polite / evade rate limits)")
+    p.add_argument("--threads", type=int, default=30, help="content-discovery threads")
+    p.add_argument("-o", "--out", help="write report to OUT.json/.md/.html")
+    p.add_argument("--min-score", type=int, default=0, dest="min_score")
+    p.add_argument("--top", type=int, default=0)
+    p.add_argument("--no-color", action="store_true", dest="no_color")
+    p.add_argument("--quiet", action="store_true")
+    p.set_defaults(crawl=True, probe=True)
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="pwnscout",
@@ -66,6 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--version", action="version", version=f"pwnscout {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
     _add_scan(sub)
+    _add_web(sub)
     _add_exploit(sub)
     sub.add_parser("kb", help="show knowledge-base stats and detected tools")
     return ap
@@ -96,6 +133,32 @@ def cmd_scan(opts) -> int:
     crit_high = sum(1 for f in result.findings
                     if f.severity.label in ("critical", "high"))
     return 0 if crit_high == 0 else 2  # non-zero exit if hot findings (CI-friendly)
+
+
+def cmd_web(opts) -> int:
+    from .web import web_scan
+    from . import report
+
+    if opts.no_color:
+        disable_color()
+        os.environ["NO_COLOR"] = "1"
+
+    log = None if opts.quiet else (lambda m: sys.stderr.write(m + "\n"))
+    result = web_scan(opts.targets, opts, log=log)
+
+    sys.stdout.write(report.to_terminal(result, min_score=opts.min_score, top=opts.top))
+    sys.stdout.write("\n")
+
+    if opts.out:
+        base = opts.out
+        _write(base + ".json", report.to_json(result))
+        _write(base + ".md", report.to_markdown(result))
+        _write(base + ".html", report.to_html(result))
+        sys.stderr.write(color(f"[*] reports written: {base}.json/.md/.html\n", "cyan"))
+
+    crit_high = sum(1 for f in result.findings
+                    if f.severity.label in ("critical", "high"))
+    return 0 if crit_high == 0 else 2
 
 
 def cmd_exploit(opts) -> int:
@@ -146,11 +209,16 @@ def cmd_exploit(opts) -> int:
 
 def cmd_kb(_opts) -> int:
     from .kb import loader
+    pl = loader.payloads()
     print(color("pwnscout knowledge base", "bold"))
     print(f"  vulndb entries    : {len(loader.vulndb())}")
     print(f"  http path checks  : {len(loader.http_paths())}")
     print(f"  web fingerprints  : {len(loader.fingerprints())}")
     print(f"  default-cred sets : {len(loader.default_creds())}")
+    print(f"  web wordlist      : {len(loader.wordlist())}")
+    print(f"  probe payloads    : ssti {len(pl.get('ssti', []))}, "
+          f"sqli-sigs {len(pl.get('sqli_errors', []))}, "
+          f"traversal {len(pl.get('traversal', {}).get('payloads', []))}")
     print(color("\nexternal tools detected:", "bold"))
     for tool, ok in integrations.available().items():
         mark = color("yes", "green") if ok else color("no", "grey")
@@ -198,6 +266,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         if opts.cmd == "scan":
             return cmd_scan(opts)
+        if opts.cmd == "web":
+            return cmd_web(opts)
         if opts.cmd == "exploit":
             return cmd_exploit(opts)
         if opts.cmd == "kb":

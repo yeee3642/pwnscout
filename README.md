@@ -51,6 +51,9 @@ pwnscout is that first pass:
 - **Confirms, doesn't just guess** — the `--verify` stage runs *safe, read-only* PoCs
   (anonymous FTP, unauth Redis/Docker/Elasticsearch/Memcached, exposed `.git`/`.env`, …)
   to turn "possible" into "✓verified".
+- **Deep web mode** — a `web` subcommand crawls the app, brute-forces content, and runs
+  *safe active* probes (reflected XSS, SSTI, error-based SQLi, path traversal/LFI, open
+  redirect, CORS, security headers) — with authenticated scanning via `--cookie`/`--header`.
 - **A/D ready** — a batch exploit runner fires your own exploit module at every enemy IP
   in parallel and collects flags on a loop.
 
@@ -101,6 +104,43 @@ and `OUT.html` (standalone, dark-mode).
 ### Exit codes (CI-friendly)
 
 `0` = no high/critical findings · `2` = at least one high/critical · `1` = usage error.
+
+## Web red-team mode
+
+Point `web` at an application to crawl it, map the attack surface, and run **safe,
+detection-only** active probes. Findings land in the same ranked report.
+
+```bash
+# Crawl + probe an app
+python3 pwnscout.py web http://target/
+
+# Add content discovery (bundled wordlist, or your own) + save reports
+python3 pwnscout.py web http://target/ --discover --wordlist ~/SecLists/.../raft.txt -o loot/app
+
+# Authenticated scan (you have creds/session — the red-team norm)
+python3 pwnscout.py web https://target/ --cookie "session=eyJ..." --header "X-Api-Key: abc"
+
+# Be gentle behind a WAF / rate limit
+python3 pwnscout.py web http://target/ --delay 0.3 --probe-budget 800
+```
+
+What it probes (all injection-point aware — GET params and forms it crawled):
+
+| Probe | How it's detected (safe) |
+|-------|--------------------------|
+| **Reflected XSS** | canary with special chars comes back unescaped |
+| **SSTI** | `{{7*7}}`/`${7*7}`/… evaluates to `49` (→ usually RCE) |
+| **SQL injection** | a quote produces a DB error the clean request didn't |
+| **Path traversal / LFI** | payload returns `/etc/passwd` (or `win.ini`) markers |
+| **Open redirect** | redirect param sends you to an external marker host |
+| **CORS** | `Origin` is reflected with credentials allowed |
+| **Headers / cookies** | missing CSP/HSTS/nosniff/frame-options, weak cookie flags |
+
+Nothing destructive: no time-based payloads, no data exfiltration, no state changes. A hit
+means "confirm and exploit this by hand" — the report hands you the repro command.
+
+Bound the work with `--probe-budget` (max requests) and `--max-points`; when a budget is
+hit, pwnscout **tells you** it stopped early rather than silently under-testing.
 
 ## How scoring works
 
@@ -179,6 +219,8 @@ python3 pwnscout.py kb
 - **Safe verification** (`--verify`) — anonymous FTP, unauth Redis/Docker/Elasticsearch/
   Memcached/MongoDB, SMB null session, exposed `.git`/`.env`, and (with `--brute`) a tiny
   HTTP Basic / Tomcat default-cred check.
+- **Deep web mode** (`web`) — crawler, content discovery, and safe active probes for XSS /
+  SSTI / SQLi / LFI / open-redirect / CORS / headers, with authenticated-scan support.
 
 ## Design notes
 
