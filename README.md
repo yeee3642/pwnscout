@@ -53,7 +53,9 @@ pwnscout is that first pass:
   to turn "possible" into "✓verified".
 - **Deep web mode** — a `web` subcommand crawls the app, brute-forces content, and runs
   *safe active* probes (reflected XSS, SSTI, error-based SQLi, path traversal/LFI, open
-  redirect, CORS, security headers) — with authenticated scanning via `--cookie`/`--header`.
+  redirect, CORS, security headers). Includes form **auto-login**, **JWT** weakness
+  analysis (weak-secret cracking → forgery), and **exploit generation** that hands
+  confirmed SSTI/LFI/SQLi straight to the A/D runner.
 - **A/D ready** — a batch exploit runner fires your own exploit module at every enemy IP
   in parallel and collects flags on a loop.
 
@@ -141,6 +143,48 @@ means "confirm and exploit this by hand" — the report hands you the repro comm
 
 Bound the work with `--probe-budget` (max requests) and `--max-points`; when a budget is
 hit, pwnscout **tells you** it stopped early rather than silently under-testing.
+
+### Authenticated scanning (auto-login)
+
+Give it the login page and creds — it finds the form (carrying any CSRF token), logs in,
+and runs the whole crawl/probe as the authenticated user (cookie jar included):
+
+```bash
+python3 pwnscout.py web http://target/ \
+    --login-url http://target/login --login-user admin --login-pass secret
+
+# or post raw fields / assert success with a marker
+python3 pwnscout.py web http://target/ \
+    --login-url http://target/login --login-data 'user=admin&pass=secret' \
+    --login-check 'Logout'
+```
+
+### JWT analysis (on by default)
+
+Any JWT seen in responses, cookies or headers is decoded and checked for `alg=none`,
+**weak HMAC secret** (cracked offline → you can forge tokens), RS/ES→HS confusion, missing
+`exp`, and sensitive claims. Bring your own secret list with `--jwt-wordlist`.
+
+### Auto-generate exploits (`--gen-exploits`)
+
+Turn confirmed injections into runnable code — the bridge to the A/D `exploit` runner:
+
+```bash
+python3 pwnscout.py web http://target/ --gen-exploits loot/exploits
+```
+
+produces, per confirmed finding:
+
+- **SSTI** → a `Module(Exploit)` that runs a command via the detected engine's RCE payload
+- **LFI** → a `Module(Exploit)` that reads arbitrary files through the vulnerable param
+- **SQLi** → a ready `sqlmap` hand-off script
+- plus `EXPLOIT_PLAN.md`
+
+Then weaponize across every enemy box:
+
+```bash
+pwnscout exploit loot/exploits/01_ssti_*.py --targets enemies.txt --loop 30
+```
 
 ## How scoring works
 

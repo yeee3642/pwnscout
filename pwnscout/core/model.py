@@ -89,6 +89,7 @@ class Finding:
     verified: bool = False          # a safe PoC confirmed it this run
     tags: List[str] = field(default_factory=list)
     cve: Optional[str] = None
+    exploit: Optional[Dict[str, Any]] = None   # structured hook for exploit-gen
 
     @property
     def score(self) -> int:

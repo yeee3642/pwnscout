@@ -16,6 +16,7 @@ from ..core.utils import HttpResponse, http_request
 @dataclass
 class Session:
     headers: Dict[str, str] = field(default_factory=dict)
+    jar: Dict[str, str] = field(default_factory=dict)   # name -> value cookie jar
     timeout: float = 8.0
     delay: float = 0.0            # seconds between requests (rate limiting)
     max_body: int = 300_000
@@ -26,8 +27,12 @@ class Session:
               basic: Optional[str] = None, timeout: float = 8.0,
               delay: float = 0.0) -> "Session":
         headers: Dict[str, str] = {}
+        jar: Dict[str, str] = {}
         if cookie:
-            headers["Cookie"] = cookie
+            for pair in cookie.split(";"):
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    jar[k.strip()] = v.strip()
         for raw in header_list or []:
             if ":" in raw:
                 k, v = raw.split(":", 1)
@@ -35,7 +40,17 @@ class Session:
         if basic:
             headers["Authorization"] = "Basic " + base64.b64encode(
                 basic.encode()).decode()
-        return cls(headers=headers, timeout=timeout, delay=delay)
+        return cls(headers=headers, jar=jar, timeout=timeout, delay=delay)
+
+    def _cookie_header(self) -> str:
+        return "; ".join(f"{k}={v}" for k, v in self.jar.items())
+
+    def _absorb(self, resp: HttpResponse) -> None:
+        for raw in resp.set_cookies or []:
+            first = raw.split(";", 1)[0]
+            if "=" in first:
+                k, v = first.split("=", 1)
+                self.jar[k.strip()] = v.strip()
 
     def request(self, url: str, method: str = "GET",
                 data: Optional[bytes] = None,
@@ -43,10 +58,14 @@ class Session:
         if self.delay:
             time.sleep(self.delay)
         hdrs = dict(self.headers)
+        if self.jar:
+            hdrs["Cookie"] = self._cookie_header()
         if extra_headers:
             hdrs.update(extra_headers)
-        return http_request(url, method=method, headers=hdrs, data=data,
+        resp = http_request(url, method=method, headers=hdrs, data=data,
                             timeout=self.timeout, max_body=self.max_body)
+        self._absorb(resp)
+        return resp
 
     def get(self, url: str, **kw) -> HttpResponse:
         return self.request(url, "GET", **kw)

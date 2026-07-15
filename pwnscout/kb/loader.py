@@ -67,21 +67,29 @@ def payloads() -> Dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def wordlist(path: Optional[str] = None) -> List[str]:
-    """Content-discovery wordlist (built-in, or a user file via --wordlist)."""
-    src = path or os.path.join(_KB_DIR, "web_wordlist.txt")
+def _read_lines(src: str, strip_slash: bool = False) -> List[str]:
     out: List[str] = []
     try:
         with open(src, encoding="utf-8", errors="ignore") as fh:
             for line in fh:
                 line = line.strip()
                 if line and not line.startswith("#"):
-                    out.append(line.lstrip("/"))
+                    out.append(line.lstrip("/") if strip_slash else line)
     except OSError:
         return []
-    # de-dup, preserve order
     seen = set()
     return [w for w in out if not (w in seen or seen.add(w))]
+
+
+def wordlist(path: Optional[str] = None) -> List[str]:
+    """Content-discovery wordlist (built-in, or a user file via --wordlist)."""
+    return _read_lines(path or os.path.join(_KB_DIR, "web_wordlist.txt"),
+                       strip_slash=True)
+
+
+def jwt_secrets(path: Optional[str] = None) -> List[str]:
+    """Weak JWT HMAC secrets for offline cracking (built-in or --jwt-wordlist)."""
+    return _read_lines(path or os.path.join(_KB_DIR, "jwt_secrets.txt"))
 
 
 # ---------------------------------------------------------------------------

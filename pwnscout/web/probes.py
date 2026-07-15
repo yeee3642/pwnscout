@@ -54,12 +54,14 @@ def _curl(point: InjectionPoint, param: str, value: str) -> str:
     return f"curl -s '{point.url}?{urlencode(params)}'"
 
 
-def _mk(url, param, title, sev, conf, cat, evidence, why, next_step, tags, verified=False):
+def _mk(url, param, title, sev, conf, cat, evidence, why, next_step, tags,
+        verified=False, exploit=None):
     host, port = _host_port(url)
     return Finding(
         target=host, port=port, service="http", title=title, severity=sev,
         confidence=conf, verified=verified, category=cat,
         evidence=evidence, why=why, next_step=next_step, tags=tags,
+        exploit=exploit,
     )
 
 
@@ -134,7 +136,10 @@ def _ssti(session, point, param, pl, budget) -> List[Finding]:
                         f"Template expression was evaluated ({probe['engine']}) — "
                         "this is typically RCE.",
                         _curl(point, param, probe["payload"]),
-                        ["ssti", "rce"], verified=True)]
+                        ["ssti", "rce"], verified=True,
+                        exploit={"kind": "ssti", "method": point.method,
+                                 "url": point.url, "param": param,
+                                 "engine": probe["engine"]})]
     return []
 
 
@@ -161,7 +166,9 @@ def _sqli(session, point, param, pl, budget, base_errors) -> List[Finding]:
                         "A single quote produced a database error the clean "
                         "request didn't — classic error-based SQLi.",
                         _curl(point, param, "pwn" + pair["break"]),
-                        ["sqli"])]
+                        ["sqli"],
+                        exploit={"kind": "sqli", "method": point.method,
+                                 "url": point.url, "param": param})]
     return []
 
 
@@ -182,7 +189,9 @@ def _traversal(session, point, param, pl, budget) -> List[Finding]:
                             "The parameter reads local files — pivot to LFI->RCE "
                             "(log poisoning, php filters, /proc).",
                             _curl(point, param, payload),
-                            ["lfi"], verified=True)]
+                            ["lfi"], verified=True,
+                            exploit={"kind": "lfi", "method": point.method,
+                                     "url": point.url, "param": param})]
     return []
 
 

@@ -139,6 +139,58 @@ def test_probes_detect_xss_ssti_sqli():
     assert "ssti" in tags and "xss" in tags and "sqli" in tags
 
 
+def test_login_form_detection():
+    from pwnscout.web.auth import find_login_form
+
+    html = ("<form action='/login' method='post'>"
+            "<input type='hidden' name='csrf' value='t0k'>"
+            "<input type='text' name='username'>"
+            "<input type='password' name='pw'></form>")
+    form = find_login_form(html, "http://x/login")
+    assert form and form.pass_field == "pw" and form.user_field == "username"
+    assert form.fields.get("csrf") == "t0k"   # hidden CSRF carried through
+
+
+def test_jwt_crack_and_analyze():
+    import base64, hashlib, hmac, json
+    from pwnscout.web import jwt as jwtmod
+
+    def seg(d):
+        return base64.urlsafe_b64encode(json.dumps(d).encode()).rstrip(b"=").decode()
+
+    h, p = seg({"alg": "HS256", "typ": "JWT"}), seg({"user": "admin", "role": "admin"})
+    sig = base64.urlsafe_b64encode(
+        hmac.new(b"secret", f"{h}.{p}".encode(), hashlib.sha256).digest()).rstrip(b"=").decode()
+    token = f"{h}.{p}.{sig}"
+    assert jwtmod.crack_hmac(token, ["nope", "secret"]) == "secret"
+    titles = " ".join(f.title for f in jwtmod.analyze(token, "src", "h", 80, ["secret"]))
+    assert "weak HMAC secret" in titles and "no exp" in titles
+
+
+def test_exploit_gen_writes_runnable_modules(tmp_path):
+    import py_compile
+    from pwnscout.web import exploit_gen
+
+    h = Host(ip="10.0.0.9")
+    h.add(Finding("10.0.0.9", "http", "SSTI", port=80, severity=Severity.CRITICAL,
+                  confidence=Confidence.CONFIRMED, verified=True, tags=["ssti"],
+                  exploit={"kind": "ssti", "method": "GET",
+                           "url": "http://10.0.0.9/s", "param": "q",
+                           "engine": "Jinja2"}))
+    h.add(Finding("10.0.0.9", "http", "LFI", port=80, severity=Severity.HIGH,
+                  confidence=Confidence.CONFIRMED, verified=True, tags=["lfi"],
+                  exploit={"kind": "lfi", "method": "GET",
+                           "url": "http://10.0.0.9/p", "param": "file"}))
+    res = ScanResult(hosts=[h])
+    files = exploit_gen.generate(res, str(tmp_path))
+    py = [f for f in files if f.endswith(".py")]
+    assert len(py) == 2
+    for f in py:
+        py_compile.compile(f, doraise=True)       # generated code is valid python
+        assert "class Module" in open(f, encoding="utf-8").read()
+    assert any(f.endswith("EXPLOIT_PLAN.md") for f in files)
+
+
 def test_report_renders():
     h = Host(ip="10.0.0.5", services=[Service(port=80, name="http")])
     h.add(Finding("10.0.0.5", "http", "Exposed .env", port=80,

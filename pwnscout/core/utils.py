@@ -14,7 +14,7 @@ import socket
 import ssl
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 from urllib import request as _urlrequest
 from urllib.error import HTTPError, URLError
@@ -161,6 +161,7 @@ class HttpResponse:
     body: str
     final_url: str
     error: str = ""
+    set_cookies: List[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -184,15 +185,19 @@ def http_request(
         with _urlrequest.urlopen(req, timeout=timeout, context=ctx) as resp:
             body = resp.read(max_body)
             raw = {k.lower(): v for k, v in resp.headers.items()}
+            cookies = resp.headers.get_all("Set-Cookie") or []
             return HttpResponse(url, resp.status, raw,
-                                body.decode("utf-8", "replace"), resp.geturl())
+                                body.decode("utf-8", "replace"), resp.geturl(),
+                                set_cookies=cookies)
     except HTTPError as exc:  # 4xx/5xx still carry useful info
         try:
             body = exc.read(max_body).decode("utf-8", "replace")
         except Exception:
             body = ""
         raw = {k.lower(): v for k, v in (exc.headers or {}).items()}
-        return HttpResponse(url, exc.code, raw, body, url)
+        cookies = exc.headers.get_all("Set-Cookie") if exc.headers else []
+        return HttpResponse(url, exc.code, raw, body, url,
+                            set_cookies=cookies or [])
     except (URLError, socket.timeout, ssl.SSLError, ConnectionError, OSError) as exc:
         return HttpResponse(url, 0, {}, "", url, error=str(exc))
     except Exception as exc:  # be defensive — a scanner must never crash on one URL

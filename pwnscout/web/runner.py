@@ -11,6 +11,8 @@ from ..core.model import Host, ScanResult, Service
 from ..core.utils import color, now_iso
 from ..enum import http as http_enum
 from ..kb import loader
+from . import exploit_gen, jwt
+from .auth import login as do_login
 from .crawler import crawl
 from .discover import discover
 from .probes import probe_points, probe_root
@@ -46,6 +48,18 @@ def web_scan(targets: List[str], opts,
     )
     words = loader.wordlist(getattr(opts, "wordlist", None))
     exts = [e.strip() for e in (getattr(opts, "ext", "") or "").split(",") if e.strip()]
+    jwt_secrets = loader.jwt_secrets(getattr(opts, "jwt_wordlist", None))
+
+    # Optional auto-login: cookies land in the shared session jar.
+    if getattr(opts, "login_url", None):
+        ok, ev = do_login(
+            session, opts.login_url,
+            user=getattr(opts, "login_user", None),
+            password=getattr(opts, "login_pass", None),
+            login_data=getattr(opts, "login_data", None),
+            check=getattr(opts, "login_check", None))
+        log(color(f"[*] login {'OK' if ok else 'FAILED'} — {ev}",
+                  "green" if ok else "red"))
 
     result = ScanResult(started=now_iso(), args={
         "mode": "web", "targets": targets,
@@ -100,11 +114,25 @@ def web_scan(targets: List[str], opts,
             findings.extend(probe_points(session, points, opts, log))
             findings.extend(probe_root(session, root, root_resp, extra_urls=discovered))
 
+        if getattr(opts, "jwt", True):
+            jfind = jwt.collect_and_scan(session, root, root_resp,
+                                         extra_urls=discovered, secrets=jwt_secrets)
+            if jfind:
+                log(color(f"    JWT: {len(jfind)} finding(s)", "grey"))
+            findings.extend(jfind)
+
         host_obj.findings = _dedup(findings)
         result.hosts.append(host_obj)
         hot = sum(1 for f in host_obj.findings if f.score >= 50)
         log(color(f"[+] {root}: {len(host_obj.findings)} findings, {hot} high-value",
                   "green"))
+
+    outdir = getattr(opts, "gen_exploits", None)
+    if outdir:
+        files = exploit_gen.generate(result, outdir)
+        mods = [f for f in files if not f.endswith("EXPLOIT_PLAN.md")]
+        log(color(f"[*] generated {len(mods)} exploit file(s) + plan in {outdir}/",
+                  "cyan"))
 
     result.finished = now_iso()
     return result

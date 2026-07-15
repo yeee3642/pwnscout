@@ -81,6 +81,23 @@ def _add_web(sub) -> None:
     p.add_argument("--header", action="append", metavar="'K: V'",
                    help="extra request header (repeatable)")
     p.add_argument("--auth-basic", dest="auth_basic", help="user:pass for HTTP Basic")
+    # auto-login (form based)
+    p.add_argument("--login-url", dest="login_url",
+                   help="login page URL — auto-detect the form and log in first")
+    p.add_argument("--login-user", dest="login_user", help="username for auto-login")
+    p.add_argument("--login-pass", dest="login_pass", help="password for auto-login")
+    p.add_argument("--login-data", dest="login_data",
+                   help="raw login body, e.g. 'user=admin&pass=secret' (overrides fields)")
+    p.add_argument("--login-check", dest="login_check",
+                   help="regex that, if present after login, means success")
+    # JWT
+    p.add_argument("--no-jwt", action="store_false", dest="jwt",
+                   help="skip JWT discovery/analysis")
+    p.add_argument("--jwt-wordlist", dest="jwt_wordlist",
+                   help="secret wordlist for JWT HMAC cracking (default: bundled)")
+    # exploit generation
+    p.add_argument("--gen-exploits", dest="gen_exploits", metavar="DIR",
+                   help="write runnable exploit modules for confirmed SSTI/LFI/SQLi")
     p.add_argument("--timeout", type=float, default=8.0)
     p.add_argument("--http-timeout", type=float, default=8.0, dest="http_timeout")
     p.add_argument("--delay", type=float, default=0.0,
@@ -91,7 +108,7 @@ def _add_web(sub) -> None:
     p.add_argument("--top", type=int, default=0)
     p.add_argument("--no-color", action="store_true", dest="no_color")
     p.add_argument("--quiet", action="store_true")
-    p.set_defaults(crawl=True, probe=True)
+    p.set_defaults(crawl=True, probe=True, jwt=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -216,6 +233,7 @@ def cmd_kb(_opts) -> int:
     print(f"  web fingerprints  : {len(loader.fingerprints())}")
     print(f"  default-cred sets : {len(loader.default_creds())}")
     print(f"  web wordlist      : {len(loader.wordlist())}")
+    print(f"  jwt secrets       : {len(loader.jwt_secrets())}")
     print(f"  probe payloads    : ssti {len(pl.get('ssti', []))}, "
           f"sqli-sigs {len(pl.get('sqli_errors', []))}, "
           f"traversal {len(pl.get('traversal', {}).get('payloads', []))}")
