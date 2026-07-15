@@ -1,0 +1,4 @@
+# pwnscout needs NOTHING from pip — it runs on a stock python3.
+# This file exists so `pip install -r requirements.txt` is a no-op and CI is happy.
+# Optional external tools it will USE if present (install via your distro, not pip):
+#   nmap, smbclient, searchsploit, redis-cli, git-dumper

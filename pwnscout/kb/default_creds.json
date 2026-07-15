@@ -1,0 +1,57 @@
+[
+  {
+    "service": "ftp",
+    "ports": [21],
+    "note": "Anonymous FTP is checked automatically in the verify stage.",
+    "creds": [["anonymous", "anonymous"], ["ftp", "ftp"], ["admin", "admin"]]
+  },
+  {
+    "service": "ssh",
+    "ports": [22],
+    "note": "Keep SSH tries tiny — lockout/tarpit risk. Prefer key reuse and enumerated users.",
+    "creds": [["root", "root"], ["root", "toor"], ["admin", "admin"], ["user", "user"], ["pi", "raspberry"]]
+  },
+  {
+    "service": "mysql",
+    "ports": [3306],
+    "note": "Blank root password is extremely common on lab/CTF boxes.",
+    "creds": [["root", ""], ["root", "root"], ["root", "password"], ["admin", "admin"]]
+  },
+  {
+    "service": "postgres",
+    "ports": [5432],
+    "note": "Default postgres/postgres and trust auth are common.",
+    "creds": [["postgres", "postgres"], ["postgres", ""], ["admin", "admin"]]
+  },
+  {
+    "service": "mssql",
+    "ports": [1433],
+    "note": "sa with a weak password enables xp_cmdshell RCE via impacket-mssqlclient.",
+    "creds": [["sa", ""], ["sa", "sa"], ["sa", "Password1"], ["sa", "password"]]
+  },
+  {
+    "service": "tomcat-manager",
+    "ports": [8080, 8443, 80],
+    "path": "/manager/html",
+    "note": "HTTP basic auth on Tomcat Manager -> deploy WAR webshell for RCE.",
+    "creds": [["tomcat", "tomcat"], ["admin", "admin"], ["admin", ""], ["tomcat", "s3cret"], ["role1", "role1"]]
+  },
+  {
+    "service": "basic-auth",
+    "ports": [80, 443, 8080],
+    "note": "Generic HTTP Basic auth guesses for admin panels.",
+    "creds": [["admin", "admin"], ["admin", "password"], ["admin", ""], ["root", "root"], ["administrator", "administrator"]]
+  },
+  {
+    "service": "telnet",
+    "ports": [23],
+    "note": "IoT/network gear vendor defaults.",
+    "creds": [["admin", "admin"], ["root", "root"], ["admin", ""], ["root", ""], ["admin", "1234"]]
+  },
+  {
+    "service": "web-app",
+    "ports": [80, 443, 8080, 3000],
+    "note": "Common webapp login defaults (Grafana, Jenkins, routers). Use the app's own login form.",
+    "creds": [["admin", "admin"], ["admin", "changeme"], ["admin", "grafana"], ["jenkins", "jenkins"], ["admin", "password"]]
+  }
+]
