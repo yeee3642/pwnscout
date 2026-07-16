@@ -100,6 +100,17 @@ def _add_web(sub) -> None:
                    help="skip access-control / IDOR checks")
     p.add_argument("--cookie2", dest="cookie2",
                    help="a second user's Cookie — enables cross-user IDOR comparison")
+    # SSRF (out-of-band)
+    p.add_argument("--ssrf", action="store_true",
+                   help="out-of-band SSRF: open a listener, inject callback URLs, "
+                        "confirm via back-connection")
+    p.add_argument("--oob-host", dest="oob_host",
+                   help="callback host the target can reach (default: auto-detect "
+                        "this machine's IP toward the target)")
+    p.add_argument("--oob-port", dest="oob_port", type=int, default=0,
+                   help="callback listener port (default: ephemeral)")
+    p.add_argument("--oob-wait", dest="oob_wait", type=float, default=4.0,
+                   help="seconds to wait for SSRF callbacks (default: 4)")
     # exploit generation
     p.add_argument("--gen-exploits", dest="gen_exploits", metavar="DIR",
                    help="write runnable exploit modules for confirmed SSTI/LFI/SQLi")

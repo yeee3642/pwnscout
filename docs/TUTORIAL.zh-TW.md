@@ -255,7 +255,20 @@ python3 pwnscout.py web http://target/ \
 python3 pwnscout.py web http://target/ --no-idor       # 關掉
 ```
 
-### 5.7 產生利用（`--gen-exploits`）—— 串到 A/D runner
+### 5.7 帶外 SSRF 偵測（`--ssrf`，預設關）
+
+pwnscout 自己開一個監聽埠，把**帶唯一 token 的回呼 URL** 注入 `url=`/`next=`/`callback=` 之類參數；只要目標伺服器真的去抓那個 URL、打回監聽埠 → **確認 SSRF（回呼＝零誤報）**，並歸因到確切的參數。它**不跟隨轉址**，所以 open-redirect 端點不會讓 pwnscout 自己打回去而誤報。
+
+```bash
+python3 pwnscout.py web http://target/ --ssrf
+
+# 自動偵測的回呼 IP 不對時，手動指定目標能連到的位址：
+python3 pwnscout.py web http://target/ --ssrf --oob-host 10.0.0.9 --oob-port 48653
+```
+
+預設關閉：它會開一個埠、且需要目標能連回來（可能被防火牆擋）。確認後 next_step 會示範打雲端 metadata（`169.254.169.254`）等內網目標。
+
+### 5.8 產生利用（`--gen-exploits`）—— 串到 A/D runner
 
 把已確認的注入自動變成可跑的檔案：
 
@@ -271,7 +284,7 @@ python3 pwnscout.py web http://target/ --gen-exploits loot/exploits
 
 產物可獨立跑（`python3 01_ssti_*.py <host> id`）或直接餵給 `exploit` runner 打全場（見 §6）。
 
-### 5.8 過 WAF / 限速
+### 5.9 過 WAF / 限速
 
 ```bash
 python3 pwnscout.py web http://target/ --delay 0.3 --probe-budget 800 --max-points 20

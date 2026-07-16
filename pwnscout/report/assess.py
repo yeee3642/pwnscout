@@ -90,6 +90,8 @@ def _vector(f: Finding) -> Optional[str]:
         return "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"        # 8.8
     if has("sqli"):
         return "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N"        # 8.6
+    if has("ssrf"):
+        return "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N"        # 8.2
     if has("lfi"):
         return "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"        # 7.5
     if has("default-creds", "auth-bypass"):
@@ -126,6 +128,9 @@ _REMEDIATION = [
                 "least-privilege database account."),
     (("lfi",), "Never build filesystem paths from user input. Allow-list filenames, "
                "canonicalise, and disable remote/URL includes."),
+    (("ssrf",), "Allow-list outbound destinations, resolve and validate the host "
+                "(block internal/link-local ranges and 169.254.169.254), and "
+                "disable unused URL schemes/redirect following."),
     (("rce",), "Remove the code-execution sink and upgrade to a patched release; "
                "run the service sandboxed with least privilege."),
     (("default-creds",), "Change all default credentials, enforce strong unique "

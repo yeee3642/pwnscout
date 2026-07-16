@@ -11,7 +11,7 @@ from ..core.model import Host, ScanResult, Service
 from ..core.utils import color, now_iso
 from ..enum import http as http_enum
 from ..kb import loader
-from . import authz, exploit_gen, jwt
+from . import authz, exploit_gen, jwt, ssrf
 from .auth import login as do_login
 from .crawler import crawl
 from .discover import discover
@@ -128,6 +128,10 @@ def web_scan(targets: List[str], opts,
                           or getattr(opts, "auth_basic", None) or session.jar)
             findings.extend(authz.run(session, cr, root, opts, authed,
                                       log=lambda m: log(color(m, "grey"))))
+
+        if getattr(opts, "ssrf", False):
+            findings.extend(ssrf.run(session, cr, root, opts,
+                                     log=lambda m: log(color(m, "grey"))))
 
         host_obj.findings = _dedup(findings)
         result.hosts.append(host_obj)

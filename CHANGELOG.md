@@ -2,6 +2,20 @@
 
 All notable changes to pwnscout are documented here.
 
+## [0.3.1] — 2026-07-16
+
+### Added
+- **Out-of-band SSRF detection** (`web --ssrf`): opens a local listener, injects
+  unique callback URLs into URL-ish parameters (crawled + common SSRF names), and
+  confirms SSRF when the target fetches one — an OOB callback is zero-false-positive
+  proof. Attributes the hit to the exact parameter; `--oob-host` / `--oob-port` /
+  `--oob-wait` to tune reachability and timing. CVSS 8.2, tag `ssrf`.
+
+### Fixed
+- `http_request(allow_redirects=False)` and SSRF injection now does **not** follow
+  redirects, so an open-redirect endpoint can no longer make pwnscout's own client
+  hit the OOB listener and fake an SSRF finding.
+
 ## [0.3.0] — 2026-07-16
 
 Reporting release. A scan now yields a submission-ready deliverable, not just a

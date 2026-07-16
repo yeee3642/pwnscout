@@ -58,10 +58,10 @@ pwnscout is that first pass:
   report** (MD/HTML/JSON) plus a **PoC bundle** (runnable exploits + repro scripts).
 - **Deep web mode** — a `web` subcommand crawls the app, brute-forces content, and runs
   *safe active* probes (reflected XSS, SSTI, error-based SQLi, path traversal/LFI, open
-  redirect, CORS, security headers). Includes form **auto-login**, **access-control /
-  IDOR** testing (auth-vs-unauth, object-id enumeration, cross-user), **JWT** weakness
-  analysis (weak-secret cracking → forgery), and **exploit generation** that hands
-  confirmed SSTI/LFI/SQLi straight to the A/D runner.
+  redirect, CORS, security headers) plus opt-in **out-of-band SSRF**. Includes form
+  **auto-login**, **access-control / IDOR** testing (auth-vs-unauth, object-id
+  enumeration, cross-user), **JWT** weakness analysis (weak-secret cracking → forgery),
+  and **exploit generation** that hands confirmed SSTI/LFI/SQLi straight to the A/D runner.
 - **A/D ready** — a batch exploit runner fires your own exploit module at every enemy IP
   in parallel and collects flags on a loop.
 
@@ -190,6 +190,21 @@ python3 pwnscout.py web http://target/ \
 ```
 
 Disable with `--no-idor`.
+
+### Out-of-band SSRF (`--ssrf`, opt-in)
+
+pwnscout opens its own listener, injects a **unique callback URL** into URL-ish
+parameters, and waits. If the target fetches one, the listener sees it — an OOB
+callback is **zero-false-positive** proof of SSRF, and it's attributed to the exact
+parameter (it does *not* follow redirects, so an open-redirect can't fake a hit).
+
+```bash
+python3 pwnscout.py web http://target/ --ssrf
+# tell it the address the target can reach, if auto-detect picks the wrong one:
+python3 pwnscout.py web http://target/ --ssrf --oob-host 10.0.0.9 --oob-port 48653
+```
+
+Off by default: it opens a port and needs the target to reach back (may be firewalled).
 
 ### Auto-generate exploits (`--gen-exploits`)
 

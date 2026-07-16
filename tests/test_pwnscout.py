@@ -253,6 +253,27 @@ def test_cvss_and_submittability():
     assert assess(jwt_info)["submittable"] is False
 
 
+def test_oob_listener_records_callback():
+    import time
+    import urllib.request
+    from pwnscout.web.ssrf import OOBListener, _local_ip
+
+    lst = OOBListener(port=0)
+    lst.start()
+    try:
+        try:
+            urllib.request.urlopen(
+                f"http://127.0.0.1:{lst.port}/tok_abc123", timeout=3).read()
+        except Exception:
+            pass
+        time.sleep(0.3)
+        hits = lst.hits()
+    finally:
+        lst.stop()
+    assert any("tok_abc123" in (path or "") for _peer, path, _raw in hits)
+    assert _local_ip("127.0.0.1")  # returns some address string
+
+
 def test_report_renders():
     h = Host(ip="10.0.0.5", services=[Service(port=80, name="http")])
     h.add(Finding("10.0.0.5", "http", "Exposed .env", port=80,

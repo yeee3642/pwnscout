@@ -54,7 +54,8 @@ class Session:
 
     def request(self, url: str, method: str = "GET",
                 data: Optional[bytes] = None,
-                extra_headers: Optional[Dict[str, str]] = None) -> HttpResponse:
+                extra_headers: Optional[Dict[str, str]] = None,
+                allow_redirects: bool = True) -> HttpResponse:
         if self.delay:
             time.sleep(self.delay)
         hdrs = dict(self.headers)
@@ -63,7 +64,8 @@ class Session:
         if extra_headers:
             hdrs.update(extra_headers)
         resp = http_request(url, method=method, headers=hdrs, data=data,
-                            timeout=self.timeout, max_body=self.max_body)
+                            timeout=self.timeout, max_body=self.max_body,
+                            allow_redirects=allow_redirects)
         self._absorb(resp)
         return resp
 

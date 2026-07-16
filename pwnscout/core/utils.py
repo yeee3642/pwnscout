@@ -171,18 +171,29 @@ class HttpResponse:
         return self.headers.get(name.lower(), "")
 
 
+class _NoRedirect(_urlrequest.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None  # don't follow — the 30x surfaces as an HTTPError
+
+
 def http_request(
     url: str, method: str = "GET", timeout: float = 8.0,
     headers: Optional[Dict[str, str]] = None, max_body: int = 200_000,
-    data: Optional[bytes] = None,
+    data: Optional[bytes] = None, allow_redirects: bool = True,
 ) -> HttpResponse:
     hdrs = {"User-Agent": USER_AGENT, "Accept": "*/*", "Connection": "close"}
     if headers:
         hdrs.update(headers)
     ctx = ssl._create_unverified_context()
     req = _urlrequest.Request(url, method=method, headers=hdrs, data=data)
+    if allow_redirects:
+        _open = lambda r: _urlrequest.urlopen(r, timeout=timeout, context=ctx)
+    else:
+        _opener = _urlrequest.build_opener(_NoRedirect,
+                                           _urlrequest.HTTPSHandler(context=ctx))
+        _open = lambda r: _opener.open(r, timeout=timeout)
     try:
-        with _urlrequest.urlopen(req, timeout=timeout, context=ctx) as resp:
+        with _open(req) as resp:
             body = resp.read(max_body)
             raw = {k.lower(): v for k, v in resp.headers.items()}
             cookies = resp.headers.get_all("Set-Cookie") or []
