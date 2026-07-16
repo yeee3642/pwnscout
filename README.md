@@ -118,6 +118,20 @@ and `OUT.html` (standalone, dark-mode).
 Point `web` at an application to crawl it, map the attack surface, and run **safe,
 detection-only** active probes. Findings land in the same ranked report.
 
+**The one command (max coverage → full report + PoCs):**
+
+```bash
+python3 pwnscout.py web http://TARGET/ --all -o loot/run
+# with credentials + a target-reachable callback IP for SSRF:
+python3 pwnscout.py web http://TARGET/ --all -o loot/run \
+    --login-url http://TARGET/login --login-user USER --login-pass PASS \
+    --oob-host YOUR_IP
+```
+
+`--all` turns on content discovery + SSRF, deepens the crawl and raises the probe
+budget; everything else (crawl, all probes, JWT, IDOR) is already on by default.
+`-o` writes the CVSS-rated vulnerability report and the PoC bundle.
+
 ```bash
 # Crawl + probe an app
 python3 pwnscout.py web http://target/

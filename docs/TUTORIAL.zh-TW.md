@@ -456,9 +456,11 @@ python3 pwnscout.py kb
 # 網段快掃 → 高分優先
 python3 pwnscout.py scan 10.0.0.0/24 --verify --min-score 50
 
-# 單一 web app 全套（登入 + 爆破 + 產生利用）
-python3 pwnscout.py web http://t/ --login-url http://t/login \
-  --login-user u --login-pass p --discover --gen-exploits ex/ -o out
+# ★ 一鍵最完整（web）：爬蟲+探測+內容爆破+SSRF+JWT+IDOR+報告+PoC 全開
+python3 pwnscout.py web http://t/ --all -o out
+# 有帳密 + SSRF 回呼 IP：
+python3 pwnscout.py web http://t/ --all -o out \
+  --login-url http://t/login --login-user u --login-pass p --oob-host 你的IP
 
 # 只要爬蟲/攻擊面、先不主動打
 python3 pwnscout.py web http://t/ --no-probe --no-jwt --no-idor

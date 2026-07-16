@@ -62,6 +62,10 @@ def _add_web(sub) -> None:
     p = sub.add_parser("web",
                        help="deep web assessment: crawl + discover + safe active probes")
     p.add_argument("targets", nargs="+", help="app URL(s) or host (http:// assumed)")
+    p.add_argument("--all", action="store_true",
+                   help="MAX coverage: turns on --discover + --ssrf, deeper crawl "
+                        "and a bigger probe budget. Combine with -o for the full "
+                        "report + PoC bundle.")
     p.add_argument("--no-crawl", action="store_false", dest="crawl",
                    help="skip crawling (probe only the URLs given)")
     p.add_argument("--depth", type=int, default=2, help="crawl depth (default 2)")
@@ -167,6 +171,13 @@ def cmd_scan(opts) -> int:
 def cmd_web(opts) -> int:
     from .web import web_scan
     from . import report
+
+    if getattr(opts, "all", False):   # one-flag maximum coverage
+        opts.discover = True
+        opts.ssrf = True
+        opts.depth = max(opts.depth, 3)
+        opts.max_points = max(opts.max_points, 80)
+        opts.probe_budget = max(opts.probe_budget, 4000)
 
     if opts.no_color:
         disable_color()

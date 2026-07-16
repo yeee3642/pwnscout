@@ -5,5 +5,5 @@ prioritized list of what you can actually hit — with the reason and the
 suggested next command for each finding.
 """
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __all__ = ["__version__"]

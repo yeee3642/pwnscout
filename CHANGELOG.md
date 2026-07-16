@@ -2,6 +2,13 @@
 
 All notable changes to pwnscout are documented here.
 
+## [0.3.2] — 2026-07-16
+
+### Added
+- **`web --all`** — one flag for maximum coverage: enables `--discover` + `--ssrf`,
+  deepens the crawl (depth 3) and raises the probe budget. Combine with `-o` for the
+  full report + PoC bundle in a single command.
+
 ## [0.3.1] — 2026-07-16
 
 ### Added
