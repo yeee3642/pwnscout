@@ -146,11 +146,7 @@ def cmd_scan(opts) -> int:
     sys.stdout.write("\n")
 
     if opts.out:
-        base = opts.out
-        _write(base + ".json", report.to_json(result))
-        _write(base + ".md", report.to_markdown(result))
-        _write(base + ".html", report.to_html(result))
-        sys.stderr.write(color(f"[*] reports written: {base}.json/.md/.html\n", "cyan"))
+        _write_reports(opts.out, result)
 
     crit_high = sum(1 for f in result.findings
                     if f.severity.label in ("critical", "high"))
@@ -172,11 +168,7 @@ def cmd_web(opts) -> int:
     sys.stdout.write("\n")
 
     if opts.out:
-        base = opts.out
-        _write(base + ".json", report.to_json(result))
-        _write(base + ".md", report.to_markdown(result))
-        _write(base + ".html", report.to_html(result))
-        sys.stderr.write(color(f"[*] reports written: {base}.json/.md/.html\n", "cyan"))
+        _write_reports(opts.out, result)
 
     crit_high = sum(1 for f in result.findings
                     if f.severity.label in ("critical", "high"))
@@ -258,6 +250,22 @@ def _write(path: str, text: str) -> None:
         os.makedirs(d, exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(text)
+
+
+def _write_reports(base: str, result) -> None:
+    """Write the JSON/MD/HTML report and a PoC bundle in <base>_pocs/."""
+    from . import report
+    _write(base + ".json", report.to_json(result))
+    _write(base + ".md", report.to_markdown(result))
+    _write(base + ".html", report.to_html(result))
+    subs = sum(1 for f in result.findings if report.assess.assess(f)["submittable"])
+    poc_dir = base + "_pocs"
+    files = report.poc.generate(result, poc_dir)
+    mods = [f for f in files if not os.path.basename(f).endswith(".md")]
+    sys.stderr.write(color(
+        f"[*] report: {base}.json/.md/.html  ·  {subs} submittable\n"
+        f"[*] PoC bundle: {poc_dir}/ ({len(mods)} artifact(s) + POC_INDEX.md)\n",
+        "cyan"))
 
 
 def _make_submitter(url: str):

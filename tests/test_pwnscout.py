@@ -228,6 +228,31 @@ def test_numeric_idor_detects_and_ignores_reflection():
     assert _numeric_idor(EchoSession(), [(pt2, "id")]) == []
 
 
+def test_cvss_and_submittability():
+    from pwnscout.report.assess import assess, base_score
+
+    # CVSS 3.1 base score matches the reference for a canonical RCE vector.
+    assert base_score("AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H") == 9.8
+
+    ssti = Finding("h", "http", "SSTI", port=80, severity=Severity.CRITICAL,
+                   confidence=Confidence.CONFIRMED, verified=True, tags=["ssti", "rce"])
+    a = assess(ssti)
+    assert a["cvss_score"] == 9.8 and a["risk"] == "Critical" and a["submittable"]
+    assert a["remediation"]
+
+    # A recon lead (content discovery) is NOT submittable.
+    lead = Finding("h", "http", "Content discovered: /admin", port=80,
+                   severity=Severity.LOW, confidence=Confidence.CONFIRMED,
+                   verified=True, category="recon", tags=["content-discovery"])
+    assert assess(lead)["submittable"] is False
+
+    # A low-value JWT informational finding is NOT submittable.
+    jwt_info = Finding("h", "http", "JWT has no exp claim", port=80,
+                       severity=Severity.LOW, confidence=Confidence.LIKELY, tags=["jwt"])
+    assert assess(jwt_info)["cvss_score"] < 4.0
+    assert assess(jwt_info)["submittable"] is False
+
+
 def test_report_renders():
     h = Host(ip="10.0.0.5", services=[Service(port=80, name="http")])
     h.add(Finding("10.0.0.5", "http", "Exposed .env", port=80,

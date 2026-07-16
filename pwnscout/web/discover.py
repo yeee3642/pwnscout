@@ -76,16 +76,16 @@ def discover(session: Session, root: str, words: List[str],
         sensitive = bool(_SENSITIVE.search(h.path))
         forbidden = h.status in (401, 403)
         if sensitive or forbidden:
-            sev = Severity.MEDIUM if (sensitive or forbidden) else Severity.LOW
-            if sensitive and h.status == 200:
-                sev = Severity.HIGH
-            note = ("exists but forbidden — worth an auth-bypass/verb-tamper attempt"
-                    if forbidden else "sensitive path is reachable")
+            # These are recon LEADS, not confirmed vulns — a reachable /admin is
+            # not itself submittable. Real file exposure (.git/.env/backups with
+            # content) is caught with proper severity by the http_paths checks.
+            note = ("exists but forbidden — worth an auth-bypass / verb-tamper try"
+                    if forbidden else "sensitive path is reachable — investigate")
             findings.append(Finding(
                 target=host, port=port, service="http",
                 title=f"Content discovered: /{h.path}",
-                severity=sev, confidence=Confidence.CONFIRMED, verified=True,
-                category="exposure",
+                severity=Severity.LOW, confidence=Confidence.CONFIRMED, verified=True,
+                category="recon",
                 evidence=f"/{h.path} -> HTTP {h.status} ({h.length}B)"
                          + (f" -> {h.location}" if h.location else ""),
                 why=note,

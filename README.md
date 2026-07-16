@@ -53,6 +53,9 @@ pwnscout is that first pass:
 - **Confirms, doesn't just guess** — the `--verify` stage runs *safe, read-only* PoCs
   (anonymous FTP, unauth Redis/Docker/Elasticsearch/Memcached, exposed `.git`/`.env`, …)
   to turn "possible" into "✓verified".
+- **Submission-ready** — every finding gets an estimated **CVSS 3.1** score + risk label,
+  reportable ones are marked ★ *submittable*, and `-o` writes a full **vulnerability
+  report** (MD/HTML/JSON) plus a **PoC bundle** (runnable exploits + repro scripts).
 - **Deep web mode** — a `web` subcommand crawls the app, brute-forces content, and runs
   *safe active* probes (reflected XSS, SSTI, error-based SQLi, path traversal/LFI, open
   redirect, CORS, security headers). Includes form **auto-login**, **access-control /
@@ -220,6 +223,30 @@ score = severity_weight × confidence_multiplier  (+10 verified, +5 known-exploi
   `confirmed` (a safe PoC proved it)
 
 Deterministic, explainable, no magic. Sort descending = your to-do list.
+
+## Reports, CVSS risk rating & PoC bundle
+
+Add `-o <name>` to any `scan` or `web` run and you get a **submission-ready deliverable**:
+
+```bash
+python3 pwnscout.py web http://target/ --login-url http://target/login \
+    --login-user u --login-pass p --discover -o loot/target
+```
+
+writes:
+
+- `loot/target.md` / `.html` — a **vulnerability report**: per finding an estimated
+  **CVSS 3.1** vector + score, risk label, confidence, affected asset, description,
+  **steps to reproduce**, PoC pointer, impact and **remediation**.
+- `loot/target.json` — machine-readable, each finding enriched with
+  `cvss_vector` / `cvss_score` / `risk` / `submittable` / `remediation`.
+- `loot/target_pocs/` — a **PoC bundle**: runnable `Module(Exploit)` files for confirmed
+  SSTI/LFI/SQLi, reproduction scripts for the rest, `POC_INDEX.md` and `EXPLOIT_PLAN.md`.
+
+Findings worth reporting are marked ★ **submittable** (CVSS ≥ 4.0, confirmed or
+high-confidence, a real vulnerability class). Recon leads (a reachable `/admin`, a JWT
+with no `exp`) are demoted to informational so the report isn't padded — CVSS scores are
+*estimates from the finding class*, so eyeball them before you submit.
 
 ## The A/D exploit runner
 

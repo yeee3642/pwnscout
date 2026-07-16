@@ -2,6 +2,34 @@
 
 All notable changes to pwnscout are documented here.
 
+## [0.3.0] — 2026-07-16
+
+Reporting release. A scan now yields a submission-ready deliverable, not just a
+terminal list.
+
+### Added
+- **CVSS 3.1 risk rating** — every finding gets an estimated CVSS v3.1 vector +
+  base score (real formula, verified against reference vectors) and a risk label
+  (None/Low/Medium/High/Critical).
+- **Submittability** — findings worth reporting are marked ★ *submittable*
+  (CVSS ≥ 4.0, confirmed/high-confidence, real vuln class); recon leads
+  (content-discovery, JWT-info) are demoted to informational so the report isn't
+  padded.
+- **Submission-ready report** — the Markdown/HTML `-o` output is now a full
+  vulnerability report: per finding CVSS, risk, confidence, affected asset,
+  description, steps to reproduce, PoC pointer, impact and remediation.
+- **PoC bundle** — `-o <name>` now also writes `<name>_pocs/`: runnable
+  `Module(Exploit)` files for confirmed SSTI/LFI/SQLi, reproduction scripts for
+  the rest, plus `POC_INDEX.md` (risk/CVSS/artifact table) and `EXPLOIT_PLAN.md`.
+- JSON report enriched with `cvss_vector` / `cvss_score` / `risk` /
+  `submittable` / `remediation` per finding, and a `submittable` summary count.
+
+### Changed
+- Content-discovery hits are recon leads (Low, not submittable) — real file
+  exposure is still caught with proper severity by the http-path checks.
+- Terminal report shows the CVSS score, a ★ submittable marker, and a submittable
+  count.
+
 ## [0.2.1] — 2026-07-16
 
 ### Added

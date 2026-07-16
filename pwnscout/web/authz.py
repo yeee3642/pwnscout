@@ -155,7 +155,7 @@ def _auth_vs_unauth(session: Session, cr: CrawlResult, root: str,
                 f"HTTP 200 ({len(r_un.body)}B) — no redirect to login",
                 "A resource reached while logged in is also served to a session "
                 "with no cookies — missing authentication / broken access control.",
-                f"curl -s '{url}'   # no cookies", ["bac", "auth-bypass"]))
+                f"curl -s '{url}'   # no cookies", ["bac"]))
     return out
 
 

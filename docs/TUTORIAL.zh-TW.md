@@ -89,10 +89,29 @@ score = 嚴重度權重 × 信心倍率   (+10 已驗證, +5 已知可利用)
      run: curl -s 'http://10.0.0.5:8080/search?q=pwnss%7B%7B7%2A7%7D%7D'
 ```
 
-三種輸出檔（`-o 前綴` 一次全出）：
-- `.json` — 機器可讀（含完整清單、每個發現的結構化 `exploit` 中繼資料）
-- `.md` — 貼進你的筆記 / 報告
-- `.html` — 獨立深色主題單檔報告
+### 3.1 風險等級（CVSS）與「可提交」
+
+每條發現除了 attack score，還會算一個 **CVSS 3.1 風險評分**（真的用公式算出向量＋分數）與風險等級（None/Low/Medium/High/Critical）。終端機報告會顯示 `CVSS x.x`，並在「值得提交」的發現前面標 **★**：
+
+```
+★ 100 [CRIT] SSTI (param 'q') ✓  CVSS 9.8
+```
+
+**可提交（submittable）** 的判定：CVSS ≥ 4.0、已確認或高信心、且屬於真正的漏洞類別。純 recon 線索（例如「/admin 可達」、JWT 沒有 exp）會被降為 informational，**不會灌進可提交清單**。CVSS 是**依漏洞類別估算**的，提交前請自己再看一眼。
+
+### 3.2 `-o` 一下 = 完整可交付成果（報告 ＋ PoC）
+
+只要加 `-o <名字>`，`scan` / `web` 都會產出一整包**可直接交的成果**：
+
+```bash
+python3 pwnscout.py web http://target/ --discover -o loot/target
+```
+
+- `loot/target.md` / `.html` — **漏洞報告**：每條含 CVSS 向量＋分數、風險、信心、受影響資產、描述、**重現步驟**、PoC 指標、影響、**修補建議**
+- `loot/target.json` — 機器可讀，每條加了 `cvss_vector`/`cvss_score`/`risk`/`submittable`/`remediation`
+- `loot/target_pocs/` — **PoC 包**：已確認的 SSTI/LFI/SQLi 產生可跑的 `Module(Exploit)`、其餘產生重現腳本，加 `POC_INDEX.md`（風險/CVSS/檔案對照表）與 `EXPLOIT_PLAN.md`
+
+換句話說：**一掃下去就有 PoC ＋ 分好風險等級的漏洞報告，還標好哪些可以提交。**
 
 **Exit code（給 CI / 腳本）**：`0` = 無 high/critical；`2` = 有 high/critical；`1` = 用法錯誤。
 
