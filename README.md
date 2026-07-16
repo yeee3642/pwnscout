@@ -26,6 +26,8 @@ the box, it uses them; if not, it falls back to its own pure-Python implementati
        run: git-dumper http://10.0.0.5:8080/.git/ loot_git && …
 ```
 
+📖 **完整中文實戰教學 / full hands-on walkthrough:** [docs/TUTORIAL.zh-TW.md](docs/TUTORIAL.zh-TW.md)
+
 ---
 
 ## ⚖️ Authorized use only
