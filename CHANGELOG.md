@@ -2,6 +2,20 @@
 
 All notable changes to pwnscout are documented here.
 
+## [0.2.1] — 2026-07-16
+
+### Added
+- **Access-control / IDOR testing** (`web`, on by default) built on auto-login:
+  - *auth-vs-unauth*: a resource reached while logged in is re-requested with a
+    clean cookie-less session — if it's still served (not redirected to login /
+    401 / 403) that's missing authentication / broken access control.
+  - *numeric neighbour*: object-id `±1` returns a distinct valid record while a
+    bogus id does not → horizontal IDOR / object enumeration. Reflective params
+    are skipped (left to the XSS probe) to avoid false positives.
+  - *cross-user* (`--cookie2`): a second user's session reading the first user's
+    object → horizontal privilege escalation.
+- `--no-idor` to disable; findings tagged `idor` / `bac`.
+
 ## [0.2.0] — 2026-07-16
 
 Web red-team release. The `web` subcommand goes from a light path-checker to a

@@ -191,6 +191,43 @@ def test_exploit_gen_writes_runnable_modules(tmp_path):
     assert any(f.endswith("EXPLOIT_PLAN.md") for f in files)
 
 
+def test_numeric_idor_detects_and_ignores_reflection():
+    from urllib.parse import parse_qs, urlparse
+    from pwnscout.web.authz import _numeric_idor
+    from pwnscout.web.crawler import InjectionPoint
+
+    def _id(url):
+        return (parse_qs(urlparse(url).query).get("id") or ["0"])[0]
+
+    class OrderSession:      # object lookup: distinct record per id, 404 for bogus
+        timeout = 8
+        def get(self, url, extra_headers=None):
+            v = _id(url)
+            n = int(v) if v.isdigit() else -1
+            if 1 <= n <= 100000:
+                return HttpResponse(
+                    url, 200, {},
+                    f"<html><body>Order #{n} — customer {n}, total ${n*7}</body></html>",
+                    url)
+            return HttpResponse(url, 404, {}, "<html><body>no such order</body></html>", url)
+        def request(self, url, method="GET", data=None, extra_headers=None):
+            return self.get(url)
+
+    class EchoSession:       # reflective param — must NOT be flagged as IDOR
+        timeout = 8
+        def get(self, url, extra_headers=None):
+            return HttpResponse(url, 200, {}, f"you searched for {_id(url)}", url)
+        def request(self, url, method="GET", data=None, extra_headers=None):
+            return self.get(url)
+
+    pt = InjectionPoint("GET", "http://t/api/order", {"id": "1000"}, "url")
+    hits = _numeric_idor(OrderSession(), [(pt, "id")])
+    assert any("IDOR" in f.title for f in hits)
+
+    pt2 = InjectionPoint("GET", "http://t/search", {"id": "1000"}, "url")
+    assert _numeric_idor(EchoSession(), [(pt2, "id")]) == []
+
+
 def test_report_renders():
     h = Host(ip="10.0.0.5", services=[Service(port=80, name="http")])
     h.add(Finding("10.0.0.5", "http", "Exposed .env", port=80,

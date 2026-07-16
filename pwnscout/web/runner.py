@@ -11,7 +11,7 @@ from ..core.model import Host, ScanResult, Service
 from ..core.utils import color, now_iso
 from ..enum import http as http_enum
 from ..kb import loader
-from . import exploit_gen, jwt
+from . import authz, exploit_gen, jwt
 from .auth import login as do_login
 from .crawler import crawl
 from .discover import discover
@@ -93,6 +93,7 @@ def web_scan(targets: List[str], opts,
             pass
 
         points = []
+        cr = None
         if getattr(opts, "crawl", True):
             cr = crawl(session, root, depth=getattr(opts, "depth", 2),
                        max_pages=getattr(opts, "max_pages", 200))
@@ -120,6 +121,13 @@ def web_scan(targets: List[str], opts,
             if jfind:
                 log(color(f"    JWT: {len(jfind)} finding(s)", "grey"))
             findings.extend(jfind)
+
+        if getattr(opts, "idor", True) and cr is not None:
+            authed = bool(getattr(opts, "login_url", None)
+                          or getattr(opts, "cookie", None)
+                          or getattr(opts, "auth_basic", None) or session.jar)
+            findings.extend(authz.run(session, cr, root, opts, authed,
+                                      log=lambda m: log(color(m, "grey"))))
 
         host_obj.findings = _dedup(findings)
         result.hosts.append(host_obj)

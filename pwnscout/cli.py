@@ -95,6 +95,11 @@ def _add_web(sub) -> None:
                    help="skip JWT discovery/analysis")
     p.add_argument("--jwt-wordlist", dest="jwt_wordlist",
                    help="secret wordlist for JWT HMAC cracking (default: bundled)")
+    # access control / IDOR
+    p.add_argument("--no-idor", action="store_false", dest="idor",
+                   help="skip access-control / IDOR checks")
+    p.add_argument("--cookie2", dest="cookie2",
+                   help="a second user's Cookie — enables cross-user IDOR comparison")
     # exploit generation
     p.add_argument("--gen-exploits", dest="gen_exploits", metavar="DIR",
                    help="write runnable exploit modules for confirmed SSTI/LFI/SQLi")
@@ -108,7 +113,7 @@ def _add_web(sub) -> None:
     p.add_argument("--top", type=int, default=0)
     p.add_argument("--no-color", action="store_true", dest="no_color")
     p.add_argument("--quiet", action="store_true")
-    p.set_defaults(crawl=True, probe=True, jwt=True)
+    p.set_defaults(crawl=True, probe=True, jwt=True, idor=True)
 
 
 def build_parser() -> argparse.ArgumentParser:

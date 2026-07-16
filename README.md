@@ -53,7 +53,8 @@ pwnscout is that first pass:
   to turn "possible" into "✓verified".
 - **Deep web mode** — a `web` subcommand crawls the app, brute-forces content, and runs
   *safe active* probes (reflected XSS, SSTI, error-based SQLi, path traversal/LFI, open
-  redirect, CORS, security headers). Includes form **auto-login**, **JWT** weakness
+  redirect, CORS, security headers). Includes form **auto-login**, **access-control /
+  IDOR** testing (auth-vs-unauth, object-id enumeration, cross-user), **JWT** weakness
   analysis (weak-secret cracking → forgery), and **exploit generation** that hands
   confirmed SSTI/LFI/SQLi straight to the A/D runner.
 - **A/D ready** — a batch exploit runner fires your own exploit module at every enemy IP
@@ -164,6 +165,26 @@ python3 pwnscout.py web http://target/ \
 Any JWT seen in responses, cookies or headers is decoded and checked for `alg=none`,
 **weak HMAC secret** (cracked offline → you can forge tokens), RS/ES→HS confusion, missing
 `exp`, and sensitive claims. Bring your own secret list with `--jwt-wordlist`.
+
+### Access control / IDOR (on by default, needs a session)
+
+After logging in, pwnscout compares access to spot broken authorization:
+
+- **auth-vs-unauth** — a logged-in resource still served to a cookie-less session
+  (missing authentication / broken access control)
+- **numeric neighbour** — object-id `±1` returns a different valid record while a
+  bogus id 404s → you can enumerate other users' objects (reflective params are
+  skipped, so `/search?id=` won't false-positive)
+- **cross-user** — give a second user's session with `--cookie2` to catch one user
+  reading another's object
+
+```bash
+python3 pwnscout.py web http://target/ \
+    --login-url http://target/login --login-user a --login-pass a \
+    --cookie2 "session=<user-B-cookie>"
+```
+
+Disable with `--no-idor`.
 
 ### Auto-generate exploits (`--gen-exploits`)
 
