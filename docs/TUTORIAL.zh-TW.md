@@ -49,7 +49,7 @@ pwnscout 只做一件事，並把它做到最好：**在最短時間內，把「
 **零安裝，clone 就跑（最推薦帶去現場）：**
 
 ```bash
-git clone https://github.com/ericchen913900/pwnscout.git
+git clone https://github.com/yeee3642/pwnscout.git
 cd pwnscout
 python3 pwnscout.py --version      # 只要有 python3 就能動
 ```
